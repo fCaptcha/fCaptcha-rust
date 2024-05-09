@@ -1,0 +1,6 @@
+[global]
+address = "::"
+port = 80
+workers = 128
+log_level = "off"
+max_blocking = 32

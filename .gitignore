@@ -1,0 +1,4 @@
+.idea/
+target/
+*logins*.txt
+Cargo.lock

@@ -1,0 +1,22 @@
+[solving]
+xevil_nodes = [
+    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "45.45.238.213", queue_size = 55, port = 801 },
+    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "45.45.238.213", queue_size = 55, port = 802 },
+    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "45.45.238.213", queue_size = 55, port = 803 },
+    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "45.45.238.213", queue_size = 55, port = 804 },
+    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "45.45.238.213", queue_size = 55, port = 805 },
+    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "24.53.245.28", queue_size = 125, port = 6801 }
+]
+
+[solving.loadbalancer]
+enabled = true
+# panic-task, panic-all, restart
+node-crash-detection-triggmer-action = "restart"
+# round-robin, least-used, smart (decides based on load & game difficulty)
+mode = "smart"
+
+[networking]
+subnet = "2a12:b206::/32"
+
+[hashing]
+hash_size = 32
