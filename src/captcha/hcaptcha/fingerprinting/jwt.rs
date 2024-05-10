@@ -5,9 +5,9 @@ use crate::commons::error::DortCapError::CodeErr;
 use crate::commons::error::DortCapResult;
 
 #[derive(Serialize, Deserialize)]
-struct DecodedJWT {
+pub struct DecodedJWT {
     #[serde(rename = "s")]
-    pub stamp_difficulty: i64,
+    pub stamp_difficulty: u32,
     #[serde(rename = "t")]
     pub r#type: String,
     #[serde(rename = "d")]

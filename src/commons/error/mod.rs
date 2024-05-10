@@ -11,6 +11,7 @@ use hex::FromHexError;
 use log::error;
 use tokio::task::JoinError;
 use std::fmt::Result as FormatResult;
+use std::hash;
 use ndarray::ShapeError;
 
 fn fmt_err(err: &impl Error, formatter: &mut Formatter<'_>) -> FormatResult {
@@ -27,54 +28,54 @@ pub type DortCapResult<T> = Result<T, DortCapError>;
 
 #[derive(thiserror::Error)]
 pub enum DortCapError {
-    #[error("ERROR")]
+    #[error("SOMETHING_WENT_HORRIBLY_FUCKING_WRONG_ERROR")]
     InternalErr,
-    #[error("Internal error. Details: {0}")]
+    #[error("DETAILED_ERROR ({0})")]
     DetailedInternalErr(&'static str),
-    #[error("0x0{0} ({1})")]
+    #[error("ERROR_0x0{0} ({1})")]
     CodeErr(u128, &'static str),
-    #[error("Internal error. Details: {0}")]
+    #[error("INTERNAL_ERROR ({0})")]
     InternalErrString(String),
-    #[error("JSON deserialization/serialization failed")]
+    #[error("JSON_SERDE_ERROR")]
     JSONErr(#[from] serde_json::Error),
-    #[error("Decode error.")]
+    #[error("BASE64_DECODE_ERROR")]
     DecodeErr(#[from] DecodeError),
-    #[error("String parsing failed.")]
+    #[error("UTF8_STRING_PARSE_ERROR")]
     StringParseErr(#[from] FromUtf8Error),
-    #[error("Request failed to complete.")]
+    #[error("REQUEST_FAILED")]
     RequestErr(#[from] reqwest::Error),
-    #[error("Failed to load image.")]
+    #[error("IMAGE_LOAD_ERROR")]
     ImageErr(#[from] ImageError),
-    #[error("Failed to load database entry.")]
+    #[error("DATABASE_ERROR")]
     RedisErr(#[from] RedisError),
-    #[error("Time went backwards.")]
+    #[error("CLOCK_TICKED_BACKWARDS_ERROR")]
     TimeErr(#[from] SystemTimeError),
-    #[error("Invalid header value.")]
+    #[error("HEADER_VALUE_ERROR")]
     BadHeaderValErr(#[from] InvalidHeaderValue),
-    #[error("Invalid header name.")]
+    #[error("HEADER_NAME_ERROR")]
     BadHeaderNameErr(#[from] InvalidHeaderName),
-    #[error("Integer parse failed.")]
+    #[error("INTEGER_PARSE_ERROR")]
     ParseIntErr(#[from] ParseIntError),
-    #[error("Failed to parse hex string.")]
+    #[error("HEX_PARSE_ERROR")]
     FromHexErr(#[from] FromHexError),
-    #[error("Failed to parse URL.")]
+    #[error("URL_PARSE_ERROR")]
     URLErr(#[from] url::ParseError),
-    #[error("String conversion failed.")]
+    #[error("HEADER_STRING_ERROR")]
     ToStrErr(#[from] ToStrError),
-    #[error("Regex match failed.")]
+    #[error("REGULAR_EXPRESSION_ERROR")]
     RegexErr(#[from] regex::Error),
-    #[error("Thread join Error.")]
+    #[error("THREAD_JOIN_ERROR")]
     ThreadJoinErr(#[from] JoinError),
-    #[error("Shape Error.")]
+    #[error("SHAPE_ERROR_NDARRAY")]
     ShapeErr(#[from] ShapeError),
-    // #[error("Request Error.")]
-    // CurlErr(#[from] ratcurl::Error),
-    #[error("I/O Error")]
+    #[error("IO_ERROR")]
     IOErr(#[from] std::io::Error),
-    #[error("Encode Error")]
+    #[error("ENCODE_SERDE_ERROR")]
     EncodeErr(#[from] serde_urlencoded::ser::Error),
-    #[error("{0}")]
+    #[error("ANYHOW_ERROR")]
     AnyhowErr(#[from] anyhow::Error),
+    #[error("HASHCASH_ERROR")]
+    HashCashErr(#[from] hashcash::HcError),
 }
 impl From<String> for DortCapError {
     fn from(value: String) -> Self {

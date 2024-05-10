@@ -1,5 +1,6 @@
 use rocket::async_trait;
 use crate::captcha::hcaptcha::fingerprinting::PoWChallenge;
+use crate::commons::error::DortCapResult;
 
 mod events;
 mod constants;
@@ -16,7 +17,7 @@ impl HSW {
 
 #[async_trait]
 impl PoWChallenge for HSW {
-    async fn get_proof(&self, jwt: &str) -> String {
-        String::new()
+    async fn get_proof(&self, jwt: &str) -> DortCapResult<String> {
+        Ok(String::new())
     }
 }
