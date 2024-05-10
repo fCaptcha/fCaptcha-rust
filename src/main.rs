@@ -9,6 +9,7 @@ use std::borrow::Cow;
 use std::fs::read_to_string;
 use std::collections::HashMap;
 use std::f64;
+use std::fmt::format;
 use std::io::{stdout};
 use std::str::FromStr;
 use std::time::Duration;
@@ -142,9 +143,9 @@ async fn solve_rate() -> u128 {
     (x * 100) / y
 }
 
-async fn get_redis_instance(url: &str) -> ConnectionManager {
+async fn get_redis_instance(db_num: u16) -> ConnectionManager {
     loop {
-        let client = Client::open(url);
+        let client = Client::open(format!("redis://default:ACCA5B570561DCFA5ACB1417C69F2900DAFF8A4FD39A2E66C36DF2BD796F0BE1CFEA8AF2DB18153874215E08BFDEC4A89A397EC53E52DAC33A1E9D0B17A52D43@45.45.238.213:42081/{db_num}"));
         if client.is_ok() {
             loop {
                 let connection_manager = client.as_ref().unwrap().get_connection_manager().await;
@@ -154,54 +155,6 @@ async fn get_redis_instance(url: &str) -> ConnectionManager {
             }
         }
     }
-}
-
-lazy_static! {
-    static ref SUPPORTED_CAPTCHA_API_VERS: RwLock<Vec<&'static str>> = RwLock::new(vec![
-        "2.4.5"
-    ]);
-    static ref PROXIES: RwLock<Vec<String>> = (|| {
-        let data = read_to_string("data/proxies.txt").unwrap();
-        let data = data.split("\n").map(|s| s.replace("\r", ""));
-        RwLock::new(data.collect())
-    })();
-    static ref HSW_VERSION: RwLock<&'static str> = RwLock::new("latest");
-    static ref HSW_RUNTIME: RwLock<&'static str> = RwLock::new("PLAIN_ENCRYPT");
-    static ref IS_USING_BROWSER_FALLBACK: RwLock<bool> = RwLock::default();
-    static ref DISCORD_CHECK_THREADS: RwLock<u128> = RwLock::default();
-    static ref DISCORD_CHECK_DELAY: RwLock<u128> = RwLock::default();
-    static ref DORTCAP_CONFIG: DortCapConfig = toml::from_str(&*read_to_string("data/DortCap.toml").expect("Config file not found in data/DortCap.toml!")).expect("Config parse failure.");
-    static ref THREADS: RwLock<HashMap<String, i32>> = RwLock::default();
-    static ref SOLVED: RwLock<u128> = RwLock::default();
-    static ref FOUND_GOOD: RwLock<u128> = RwLock::default();
-    static ref FOUND_SOLVED: RwLock<u128> = RwLock::default();
-    static ref TOKENS_UNLOCKED: RwLock<u128> = RwLock::default();
-    static ref TOKENS_LOCKED: RwLock<u128> = RwLock::default();
-    static ref ARGUMENTS: Args = Args::parse();
-    static ref REDIS_USERS_PPU: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
-        return get_redis_instance(obfstr!("redis://default:ACCA5B570561DCFA5ACB1417C69F2900DAFF8A4FD39A2E66C36DF2BD796F0BE1CFEA8AF2DB18153874215E08BFDEC4A89A397EC53E52DAC33A1E9D0B17A52D43@45.45.238.213:42081/300")).await;
-    });
-    static ref REDIS_USERS: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
-        return get_redis_instance(obfstr!("redis://default:ACCA5B570561DCFA5ACB1417C69F2900DAFF8A4FD39A2E66C36DF2BD796F0BE1CFEA8AF2DB18153874215E08BFDEC4A89A397EC53E52DAC33A1E9D0B17A52D43@45.45.238.213:42081/301")).await;
-    });
-    static ref FINGERPRINTS: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
-        return get_redis_instance(obfstr!("redis://default:ACCA5B570561DCFA5ACB1417C69F2900DAFF8A4FD39A2E66C36DF2BD796F0BE1CFEA8AF2DB18153874215E08BFDEC4A89A397EC53E52DAC33A1E9D0B17A52D43@45.45.238.213:42081/302")).await;
-    });
-    static ref IMAGE_DATABASE: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
-        return get_redis_instance(obfstr!("redis://default:ACCA5B570561DCFA5ACB1417C69F2900DAFF8A4FD39A2E66C36DF2BD796F0BE1CFEA8AF2DB18153874215E08BFDEC4A89A397EC53E52DAC33A1E9D0B17A52D43@45.45.238.213:42081/353")).await;
-    });
-    static ref USER_AGENTS: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
-        return get_redis_instance(obfstr!("redis://default:ACCA5B570561DCFA5ACB1417C69F2900DAFF8A4FD39A2E66C36DF2BD796F0BE1CFEA8AF2DB18153874215E08BFDEC4A89A397EC53E52DAC33A1E9D0B17A52D43@45.45.238.213:42081/304")).await;
-    });
-    static ref USER_AGENTS_TWITTER: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
-        return get_redis_instance(obfstr!("redis://default:ACCA5B570561DCFA5ACB1417C69F2900DAFF8A4FD39A2E66C36DF2BD796F0BE1CFEA8AF2DB18153874215E08BFDEC4A89A397EC53E52DAC33A1E9D0B17A52D43@45.45.238.213:42081/305")).await;
-    });
-    static ref FINGERPRINTS_MOBILE: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
-        return get_redis_instance(obfstr!("redis://default:ACCA5B570561DCFA5ACB1417C69F2900DAFF8A4FD39A2E66C36DF2BD796F0BE1CFEA8AF2DB18153874215E08BFDEC4A89A397EC53E52DAC33A1E9D0B17A52D43@45.45.238.213:42081/306")).await;
-    });
-    static ref HSW_FINGERPRINTS: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
-        return get_redis_instance(obfstr!("redis://default:ACCA5B570561DCFA5ACB1417C69F2900DAFF8A4FD39A2E66C36DF2BD796F0BE1CFEA8AF2DB18153874215E08BFDEC4A89A397EC53E52DAC33A1E9D0B17A52D43@45.45.238.213:42081/307")).await;
-    });
 }
 
 #[get("/stats.json")]
@@ -232,6 +185,42 @@ async fn dortcap_version() -> Custom<String> {
         ]
     });
     return Custom(Status::Ok, to_string_pretty(&json_data).unwrap());
+}
+
+lazy_static! {
+    static ref SUPPORTED_CAPTCHA_API_VERS: RwLock<Vec<&'static str>> = RwLock::new(vec![
+        "2.4.5"
+    ]);
+    static ref PROXIES: RwLock<Vec<String>> = (|| {
+        let data = read_to_string("data/proxies.txt").unwrap();
+        let data = data.split("\n").map(|s| s.replace("\r", ""));
+        RwLock::new(data.collect())
+    })();
+    static ref HSW_VERSION: RwLock<&'static str> = RwLock::new("latest");
+    static ref HSW_RUNTIME: RwLock<&'static str> = RwLock::new("PLAIN_ENCRYPT");
+    static ref IS_USING_BROWSER_FALLBACK: RwLock<bool> = RwLock::default();
+    static ref DISCORD_CHECK_THREADS: RwLock<u128> = RwLock::default();
+    static ref DISCORD_CHECK_DELAY: RwLock<u128> = RwLock::default();
+    static ref DORTCAP_CONFIG: DortCapConfig = toml::from_str(&*read_to_string("data/DortCap.toml").expect("Config file not found in data/DortCap.toml!")).expect("Config parse failure.");
+    static ref THREADS: RwLock<HashMap<String, i32>> = RwLock::default();
+    static ref SOLVED: RwLock<u128> = RwLock::default();
+    static ref FOUND_GOOD: RwLock<u128> = RwLock::default();
+    static ref FOUND_SOLVED: RwLock<u128> = RwLock::default();
+    static ref TOKENS_UNLOCKED: RwLock<u128> = RwLock::default();
+    static ref TOKENS_LOCKED: RwLock<u128> = RwLock::default();
+    static ref ARGUMENTS: Args = Args::parse();
+    static ref REDIS_USERS_PPU: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
+        return get_redis_instance(300).await;
+    });
+    static ref REDIS_USERS: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
+        return get_redis_instance(301).await;
+    });
+    static ref FINGERPRINTS: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
+        return get_redis_instance(302).await;
+    });
+    static ref IMAGE_DATABASE: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
+        return get_redis_instance(303).await;
+    });
 }
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 64)]
