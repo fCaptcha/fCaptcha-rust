@@ -1,3 +1,5 @@
+mod structs;
+
 use rocket::serde::{Deserialize, Serialize};
 use serde_json::Value;
 
