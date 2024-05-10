@@ -1,8 +1,10 @@
 use hashcash::Stamp;
 use rocket::async_trait;
-use super::jwt::parse_jwt;
+use super::{
+    jwt::parse_jwt,
+    PoWChallenge
+};
 use crate::commons::error::DortCapResult;
-use super::PoWChallenge;
 
 pub struct HSL {}
 
