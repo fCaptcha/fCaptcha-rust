@@ -28,7 +28,7 @@ use self::headers::generate_headers;
 use self::structs::{EncryptionKeyResponse, FunCaptchaRequest, SolvedCaptchaResponse};
 use self::structs::game_struct::{AnswerResponse, Game};
 use self::structs::session_structs::SessionResponse;
-use crate::{ARGUMENTS, DORTCAP_CONFIG, FOUND_SOLVED, PROXIES, SOLVED};
+use crate::{ARGUMENTS, DORTCAP_CONFIG, PROXIES, SOLVED};
 use crate::captcha::arkose_funcaptcha::bda::firefox::get_encrypted_firefox_bda;
 use crate::captcha::arkose_funcaptcha::headers::generate_headers_capi;
 use crate::commons::error::DortCapError::{CodeErr, DetailedInternalErr};
@@ -314,7 +314,6 @@ impl ArkoseSession {
             }
             if answer_response.solved.unwrap_or(false) {
                 *SOLVED.write().await += 1;
-                *FOUND_SOLVED.write().await += 1;
                 for challenge in challenges {
                     REDIS_RUNTIME.spawn(async move {
                         let _result = challenge.save_tiles().await;
@@ -339,7 +338,6 @@ impl ArkoseSession {
             }
             if answer_response.solved.ok_or(CodeErr(0x01, "SOLVE"))? {
                 *SOLVED.write().await += 1;
-                *FOUND_SOLVED.write().await += 1;
                 for mut challenge in challenges {
                     REDIS_RUNTIME.spawn(async move {
                         challenge.save_audio().await;

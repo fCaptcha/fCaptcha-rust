@@ -1,8 +1,10 @@
-mod structs;
-
+pub mod structs;
 use rocket::async_trait;
 use serde_json::{json, Value};
-use super::Challenge;
+use super::{
+    super::sessions::structs::Task,
+    Challenge
+};
 use self::structs::Answer;
 
 pub struct ImageLabelAreaSelect {
@@ -10,8 +12,8 @@ pub struct ImageLabelAreaSelect {
 }
 
 #[async_trait]
-impl Challenge<Value> for ImageLabelAreaSelect {
-    async fn populate_answers_from_database(&mut self) {
+impl Challenge for ImageLabelAreaSelect {
+    async fn populate_answers_from_database(&mut self, task: Vec<&Task>) {
         todo!()
     }
 

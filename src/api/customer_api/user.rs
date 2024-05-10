@@ -10,9 +10,9 @@ use crate::commons::error::DortCapResult;
 pub struct User {
     pub balance: f64,
     #[serde(skip)]
-    pub threads: RwLock<u32>,
+    pub threads: RwLock<u128>,
     pub api_key: String,
-    pub thread_limit: u32,
+    pub thread_limit: u128,
     pub is_pay_per_use: bool
 }
 

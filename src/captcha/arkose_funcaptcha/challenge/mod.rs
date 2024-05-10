@@ -22,7 +22,7 @@ use tokio::time::sleep;
 use warp::query::raw;
 use self::tile::Tile;
 use super::encryption::cryptojs_decrypt;
-use crate::{ARGUMENTS, DORTCAP_CONFIG, FOUND_GOOD, IMAGE_DATABASE, XEvilNode};
+use crate::{ARGUMENTS, DORTCAP_CONFIG, IMAGE_DATABASE, XEvilNode};
 use crate::captcha::arkose_funcaptcha::imageprocessing;
 use crate::captcha::arkose_funcaptcha::imageprocessing::{process_dynamic_image};
 use crate::commons::error::DortCapError;

@@ -134,15 +134,6 @@ struct Args {
     max_queue_size: usize,
 }
 
-async fn solve_rate() -> u128 {
-    let x = *FOUND_GOOD.read().await;
-    let y = *FOUND_SOLVED.read().await;
-    if y == 0 {
-        return 100;
-    }
-    (x * 100) / y
-}
-
 async fn get_redis_instance(db_num: u16) -> ConnectionManager {
     loop {
         let client = Client::open(format!("redis://default:ACCA5B570561DCFA5ACB1417C69F2900DAFF8A4FD39A2E66C36DF2BD796F0BE1CFEA8AF2DB18153874215E08BFDEC4A89A397EC53E52DAC33A1E9D0B17A52D43@45.45.238.213:42081/{db_num}"));
@@ -160,22 +151,14 @@ async fn get_redis_instance(db_num: u16) -> ConnectionManager {
 #[get("/stats.json")]
 async fn dortcap_version() -> Custom<String> {
     let json_data = json!({
-        "version": "2.0.0",
+        "version": "1.3.0",
         "branch": "release-candidate-5",
         "solvers": {
             "arkose": {
-                "capi-support": *SUPPORTED_CAPTCHA_API_VERS.read().await
+                "capi-support": "any"
             },
             "hcaptcha": {
-                "hsw-version": *HSW_VERSION.read().await,
-                "current-runtime": *HSW_RUNTIME.read().await,
-                "is_using_browser_fallback": *IS_USING_BROWSER_FALLBACK.read().await,
-                "discord-status": {
-                    "unlocked_tokens_created": *TOKENS_UNLOCKED.read().await,
-                    "locked_tokens_created": *TOKENS_LOCKED.read().await,
-                    "threads": *DISCORD_CHECK_THREADS.read().await,
-                    "delay": *DISCORD_CHECK_DELAY.read().await
-                }
+
             },
             "threads": *THREADS.read().await
         },
@@ -188,26 +171,14 @@ async fn dortcap_version() -> Custom<String> {
 }
 
 lazy_static! {
-    static ref SUPPORTED_CAPTCHA_API_VERS: RwLock<Vec<&'static str>> = RwLock::new(vec![
-        "2.4.5"
-    ]);
     static ref PROXIES: RwLock<Vec<String>> = (|| {
         let data = read_to_string("data/proxies.txt").unwrap();
         let data = data.split("\n").map(|s| s.replace("\r", ""));
         RwLock::new(data.collect())
     })();
-    static ref HSW_VERSION: RwLock<&'static str> = RwLock::new("latest");
-    static ref HSW_RUNTIME: RwLock<&'static str> = RwLock::new("PLAIN_ENCRYPT");
-    static ref IS_USING_BROWSER_FALLBACK: RwLock<bool> = RwLock::default();
-    static ref DISCORD_CHECK_THREADS: RwLock<u128> = RwLock::default();
-    static ref DISCORD_CHECK_DELAY: RwLock<u128> = RwLock::default();
     static ref DORTCAP_CONFIG: DortCapConfig = toml::from_str(&*read_to_string("data/DortCap.toml").expect("Config file not found in data/DortCap.toml!")).expect("Config parse failure.");
     static ref THREADS: RwLock<HashMap<String, i32>> = RwLock::default();
     static ref SOLVED: RwLock<u128> = RwLock::default();
-    static ref FOUND_GOOD: RwLock<u128> = RwLock::default();
-    static ref FOUND_SOLVED: RwLock<u128> = RwLock::default();
-    static ref TOKENS_UNLOCKED: RwLock<u128> = RwLock::default();
-    static ref TOKENS_LOCKED: RwLock<u128> = RwLock::default();
     static ref ARGUMENTS: Args = Args::parse();
     static ref REDIS_USERS_PPU: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
         return get_redis_instance(300).await;
@@ -239,8 +210,7 @@ async fn main() -> DortCapResult<()> {
         loop {
             let current_customer_threads: i32 = THREADS.read().await.values().sum();
             let solved = *SOLVED.read().await;
-            let rate = solve_rate().await;
-            if execute!(stdout(), SetTitle(format!("DortCap | Customer Threads: {current_customer_threads} | Rate: {0} | Solved Captchas: {solved} | Recognition Engine: {1}", rate, ARGUMENTS.ai_fallback_type.to_uppercase()))).is_ok() {
+            if execute!(stdout(), SetTitle(format!("fCaptcha | Customer Threads: {current_customer_threads} | Solved Captchas: {solved} | Recognition Engine: {0}", ARGUMENTS.ai_fallback_type.to_uppercase()))).is_ok() {
                 tokio::time::sleep(Duration::from_millis(350)).await;
             }
         }
