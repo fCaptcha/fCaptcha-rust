@@ -53,9 +53,10 @@ pub async fn get_encrypted_firefox_bda(version_url: &str, bda_template: &mut BDA
         bda_template.window_location_href = Some(String::from(version_url));
     }
     base[2]["value"] = Value::from(time);
-    bda_template.update(&mut base[4]["value"]);
-    base[4]["value"][74]["value"] = Value::from(&*uuid);
     let time = UNIX_EPOCH.elapsed()?.as_secs();
+    bda_template.update(&mut base[4]["value"]);
+    base[4]["value"][76]["value"] = Value::from(&*uuid);
+    base[4]["value"][56]["value"] = Value::from(format!("{0}\\u0263", time / 1000));
     let time_range = time - time % 21600;
     let ua = &*base_t.headers.user_agent;
     let encrypted_bda = encrypt(&*base.to_string(), &format!("{}{time_range}", ua))?;

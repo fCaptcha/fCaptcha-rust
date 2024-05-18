@@ -7,26 +7,13 @@ use serde_json::Value;
 use DortCapError::DetailedInternalErr;
 use crate::commons::error::DortCapError::CodeErr;
 use crate::commons::error::{DortCapError, DortCapResult};
-use crate::PROXIES;
+use crate::{conv_option, PROXIES};
 
 pub struct HCaptchaSession {
     site_key: String,
     site_url: String,
     rq_data: Option<String>,
     client: Client
-}
-
-macro_rules! conv_option {
-    ($x:expr) => {
-        match ($x) {
-            Some(t) => {
-                Ok(t)
-            },
-            None => {
-                Err(DetailedInternalErr("UNWRAP_FAILED"))
-            }
-        }
-    };
 }
 
 impl HCaptchaSession {

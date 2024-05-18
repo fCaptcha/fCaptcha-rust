@@ -170,6 +170,7 @@ impl ArkoseSession {
             .headers(headers_cloned)
             .send().await?
             .text().await?;
+        println!("{}", response);
         Ok(from_str(&*response)?)
     }
 
@@ -201,7 +202,9 @@ impl ArkoseSession {
 
     // submit challenge answers
     async fn submit_answer(&self, dapi_script: &str, answers: &Vec<Value>, game_type: i32, session_token: &str, game_token: &str, region: &str) -> DortCapResult<AnswerResponse> {
-        let headers = self.headers.clone();
+        let mut headers = self.headers.clone();
+        headers.insert("Referer", HeaderValue::try_from("https://client-api.arkoselabs.com/fc/assets/ec-game-core/game-core/1.20.0/standard/index.html")?);
+        headers.insert("X-Requested-With", HeaderValue::try_from("XMLHttpRequest")?);
         let mut data = BTreeMap::new();
         let dat2 = json!(answers).to_string();
         let enc2 = encrypt(&dat2, session_token)?.to_string();
@@ -214,8 +217,9 @@ impl ArkoseSession {
         }
         data.insert("guess", &*enc2);
         data.insert("sid", region);
+        data.insert("render_type", "canvas");
         data.insert("analytics_tier", "40");
-        data.insert("bio", "");
+        data.insert("bio", "eyJtYmlvIjoiIiwidGJpbyI6IiIsImtiaW8iOiIifQ==");
         let response = self.client.post(format!("{}/fc/ca/", self.request.arkose_api_url)).form(&data).headers(headers).send().await?.text().await?;
         Ok(from_str(&response)?)
     }
@@ -294,7 +298,7 @@ impl ArkoseSession {
         if game_type != 101 {
             let images = custom_gui._challenge_imgs.ok_or(CodeErr(0x01, "IMAGES"))?;
             waves = images.len() as i32;
-            // println!("t: {} w: {} g: {}", split_token, waves, instruction_string.to_string());
+            println!("t: {} w: {} g: {}", split_token, waves, instruction_string.to_string());
             let mut challenges: Vec<Challenge> = Vec::new();
             for image_url in &images {
                 let challenge = Challenge::new(&self.client, &self.headers, game_data.game_difficulty.unwrap_or(6) as u8, game_type as u8, &instruction_string, &image_url, &decryption_key.decryption_key).await?;
@@ -325,10 +329,11 @@ impl ArkoseSession {
             waves = clips.len() as i32;
             let mut challenges: Vec<AudioChallenge> = Vec::new();
             for clip in &clips {
-                let challenge = AudioChallenge::new(&self.client, clip, &instruction_string, decryption_key.decryption_key.as_deref()).await?;
+                let challenge = AudioChallenge::new(&self.headers, &self.client, clip, &instruction_string, decryption_key.decryption_key.as_deref()).await?;
                 answers.push(json!(challenge.selected_clip));
                 challenges.push(challenge);
                 answer_response = self.submit_answer(game.dapi_breakers.as_deref().unwrap_or("NOT_REQUIRED"), &answers, game_type, &split_token, &game_token, &region).await?;
+                println!("{:?}", answer_response);
                 if decryption_key.error.is_none() {
                     decryption_key = EncryptionKeyResponse {
                         error: None,

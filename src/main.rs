@@ -199,18 +199,11 @@ async fn main() -> DortCapResult<()> {
     let platform = new_unprotected_default_platform(600, false).make_shared();
     V8::initialize_platform(platform);
     V8::initialize();
-    // if true {
-    //     loop {
-    //         if let Ok(t) = ReCaptchaV3::new("6LdKlZEpAAAAAAOQjzC2v_d36tWxCl6dWsozdSy9", "https://recaptcha-demo.appspot.com:443").await {
-    //             println!("{:?}", t.request_anchor().await);
-    //         }
-    //     }
-    // }
     RUNTIME.spawn(async {
         loop {
             let current_customer_threads: i32 = THREADS.read().await.values().sum();
             let solved = *SOLVED.read().await;
-            if execute!(stdout(), SetTitle(format!("fCaptcha | Customer Threads: {current_customer_threads} | Solved Captchas: {solved} | Recognition Engine: {0}", ARGUMENTS.ai_fallback_type.to_uppercase()))).is_ok() {
+            if execute!(stdout(), SetTitle(format!("ByeCaptcha Solver | Customer Threads: {current_customer_threads} | Solved Captchas: {solved}"))).is_ok() {
                 tokio::time::sleep(Duration::from_millis(350)).await;
             }
         }
@@ -401,8 +394,10 @@ async fn arkose_solve(data: Json<ArkoseRequest>) -> Result<Custom<Json<Value>>, 
     }).await.map_err(err_fn)?;
     let result = arkose.solve().await.map_err(err_fn)?;
     solved(CUSTOMER, result.token.as_deref(), result.variant.as_deref(), result.waves.as_ref(), result.solved.as_ref()).await;
-    if *result.solved.as_ref().unwrap_or(&false) {
-        reduce_bal(&*data.api_key, 0.00025).await;
+    if let Some(solved) = result.solved.as_ref() {
+        if *solved {
+            reduce_bal(&*data.api_key, 0.00025).await;
+        }
     }
     return Ok(Custom(Status::Ok, Json(json!({
         "solved": result.solved,

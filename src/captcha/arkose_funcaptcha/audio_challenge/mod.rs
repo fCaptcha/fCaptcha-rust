@@ -29,35 +29,12 @@ use rmp3::{
 };
 
 pub fn hash_audio(data: &Vec<u8>) -> String {
-    let mut decoder = Decoder::new(data);
-    let mut num = 0f32;
-    let mut i = 0;
-    while let Some(frame) = decoder.next() {
-        if let Audio(audio) = frame {
-            if i % 6 == 0 {
-                for sample in audio.samples() {
-                    num += sample;
-                }
-            }
-            i += 1;
-        }
-    }
-    num.to_string()
+    md5::compute(data).0.encode_hex()
 }
 
 
-async fn download_clips(client: &Client, url: &str, decryption_key: Option<&str>) -> DortCapResult<Vec<u8>> {
-    let mut headers = HeaderMap::new();
-    headers.insert("Accept", HeaderValue::try_from("*/*")?);
-    headers.insert("Accept-Encoding", HeaderValue::try_from("gzip, deflate, br")?);
-    headers.insert("Content-Type", HeaderValue::try_from("application/x-www-form-urlencoded; charset=UTF-8")?);
-    headers.insert("Origin", HeaderValue::try_from("https://client-api.arkoselabs.com")?);
-    headers.insert("Referer", HeaderValue::try_from("https://client-api.arkoselabs.com/")?);
-    headers.insert("Sec-Fetch-Dest", HeaderValue::try_from("empty")?);
-    headers.insert("Sec-Fetch-Mode", HeaderValue::try_from("cors")?);
-    headers.insert("Sec-Fetch-Site", HeaderValue::try_from("same-origin")?);
-    headers.insert("User-Agent", HeaderValue::try_from("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36")?);
-    let bytes = client.get(url).headers(headers).send().await?.bytes().await?;
+async fn download_clips(header_map: &HeaderMap, client: &Client, url: &str, decryption_key: Option<&str>) -> DortCapResult<Vec<u8>> {
+    let bytes = client.get(url).headers(header_map.clone()).send().await?.bytes().await?;
     if decryption_key.is_some() {
         return Ok(BASE64_STANDARD.decode(cryptojs_decrypt(&*String::from_utf8(bytes.to_vec())?, decryption_key.unwrap())?)?);
     }
@@ -65,8 +42,8 @@ async fn download_clips(client: &Client, url: &str, decryption_key: Option<&str>
 }
 
 impl AudioChallenge {
-    pub async fn new(client: &Client, audio_link: &str, variant: &str, enc_key: Option<&str>) -> DortCapResult<AudioChallenge> {
-        let clips = download_clips(client, audio_link, enc_key).await?.split_off(1);
+    pub async fn new(header_map: &HeaderMap, client: &Client, audio_link: &str, variant: &str, enc_key: Option<&str>) -> DortCapResult<AudioChallenge> {
+        let clips = download_clips(header_map, client, audio_link, enc_key).await?.split_off(1);
         let hash = hash_audio(&clips);
         let key = format!("Game Type 4:Audio Hashes (3 Options):{}:{}", variant, hash);
         let mut answer = fastrand::i32(1..4);

@@ -270,20 +270,14 @@ impl Challenge {
         if !found && indexes.len() != 1 {
             match &*ARGUMENTS.ai_fallback_type.to_ascii_lowercase() {
                 "xevil" => {
-                    if variant.eq("orbit_match_game") {
-                        if let Ok(answer) = solve_cb(&*BASE64_STANDARD.encode(raw_grid.as_slice()), variant).await {
-                            selected_tile = answer;
-                        }
-                    } else {
-                        let mut node = choice(&DORTCAP_CONFIG.solving.xevil_nodes).ok_or(CodeErr(0x01, "IMAGE_SOLVER_NODE"))?;
-                        while *node.current_queue_size.read().await > node.queue_size {
-                            node = choice(&DORTCAP_CONFIG.solving.xevil_nodes).ok_or(CodeErr(0x02, "IMAGE_SOLVER_NODE"))?;
-                        }
-                        if let Ok(selected_tile_result) = get_answer(node, difficulty, variant, &raw_grid).await {
-                            selected_tile = selected_tile_result;
-                        }
-                        *node.current_queue_size.write().await -= 1;
+                    let mut node = choice(&DORTCAP_CONFIG.solving.xevil_nodes).ok_or(CodeErr(0x01, "IMAGE_SOLVER_NODE"))?;
+                    while *node.current_queue_size.read().await > node.queue_size {
+                        node = choice(&DORTCAP_CONFIG.solving.xevil_nodes).ok_or(CodeErr(0x02, "IMAGE_SOLVER_NODE"))?;
                     }
+                    if let Ok(selected_tile_result) = get_answer(node, difficulty, variant, &raw_grid).await {
+                        selected_tile = selected_tile_result;
+                    }
+                    *node.current_queue_size.write().await -= 1;
                 }
                 "cb" => {
                     // let task = FunCaptchaClassificationTask::new(&*BASE64_STANDARD.encode(raw_grid.as_slice()), "orbit_match_game");

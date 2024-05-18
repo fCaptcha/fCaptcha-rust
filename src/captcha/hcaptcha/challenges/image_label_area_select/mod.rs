@@ -7,13 +7,15 @@ use redis::{
     RedisResult
 };
 use super::{
-    super::sessions::structs::Task,
+    super::sessions::{
+        HCaptchaSession,
+        structs::Task
+    },
     constants::ANSWERS,
     Challenge
 };
 use rocket::async_trait;
 use serde_json::{json, Value};
-use crate::captcha::hcaptcha::sessions::HCaptchaSession;
 use self::structs::Answer;
 
 pub struct ImageLabelAreaSelect<'a> {
@@ -52,6 +54,13 @@ impl Challenge for ImageLabelAreaSelect<'_> {
     }
 
     async fn save_answers_to_database(&self) {
-        todo!()
+        for answer in &self.answers {
+            let answer_cloned = Value::clone(&answer.task_answer);
+            let hash_cloned = String::from(&answer.task_hash);
+            let mut database_cloned = ConnectionManager::clone(ANSWERS.get().await);
+            tokio::spawn(async move {
+                let _result: RedisResult<()> = database_cloned.set(format!("Image Challenges:{0}", hash_cloned), answer_cloned.to_string()).await;
+            });
+        }
     }
 }
