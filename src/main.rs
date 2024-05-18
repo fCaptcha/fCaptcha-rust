@@ -203,18 +203,24 @@ async fn main() -> DortCapResult<()> {
         loop {
             let current_customer_threads: i32 = THREADS.read().await.values().sum();
             let solved = *SOLVED.read().await;
-            if execute!(stdout(), SetTitle(format!("ByeCaptcha Solver | Customer Threads: {current_customer_threads} | Solved Captchas: {solved}"))).is_ok() {
+            if execute!(stdout(), SetTitle(format!("fCaptcha Solver [{0}] | Customer Threads: {current_customer_threads} | Solved Captchas: {solved}", if ARGUMENTS.start_api {
+                "SERVER"
+            } else {
+                "LOCAL"
+            }))).is_ok() {
                 tokio::time::sleep(Duration::from_millis(350)).await;
             }
         }
     });
-    RUNTIME.spawn(async move {
-        let _rocket = rocket::build()
-            .mount("/solver", routes![dortcap_version, arkose_solve, get_balance])
-            .mount("/wh", routes![topup])
-            .launch()
-            .await.expect("API Crashed.");
-    });
+    if ARGUMENTS.start_api {
+        RUNTIME.spawn(async move {
+            let _rocket = rocket::build()
+                .mount("/solver", routes![dortcap_version, arkose_solve, get_balance])
+                .mount("/wh", routes![topup])
+                .launch()
+                .await.expect("API Crashed.");
+        });
+    }
     for _ in 0..ARGUMENTS.threads {
         RUNTIME.spawn(async move {
             loop {
