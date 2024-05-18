@@ -217,6 +217,8 @@ async fn main() -> DortCapResult<()> {
             let _rocket = rocket::build()
                 .mount("/solver", routes![dortcap_version, arkose_solve, get_balance])
                 .mount("/wh", routes![topup])
+                // put function names in routes![] (for dexv)
+                .mount("/", routes![])
                 .launch()
                 .await.expect("API Crashed.");
         });
