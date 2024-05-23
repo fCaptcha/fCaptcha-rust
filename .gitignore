@@ -2,3 +2,4 @@
 target/
 *logins*.txt
 Cargo.lock
+.vs
