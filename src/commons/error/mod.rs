@@ -11,8 +11,8 @@ use hex::FromHexError;
 use log::error;
 use tokio::task::JoinError;
 use std::fmt::Result as FormatResult;
-use std::hash;
 use ndarray::ShapeError;
+use crate::commons::error::DortCapError::DetailedInternalErr;
 
 fn fmt_err(err: &impl Error, formatter: &mut Formatter<'_>) -> FormatResult {
     writeln!(formatter, "{}\n", err)?;
@@ -33,7 +33,7 @@ pub type DortCapResult<T> = Result<T, DortCapError>;
                 Ok(t)
             },
             None => {
-                Err(DetailedInternalErr("UNWRAP_FAILED"))
+                Err(crate::commons::error::DortCapError::DetailedInternalErr("UNWRAP_FAILED"))
             }
         }
     };

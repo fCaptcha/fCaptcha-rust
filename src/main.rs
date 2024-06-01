@@ -248,18 +248,18 @@ async fn main() -> DortCapResult<()> {
                     bda_template: BDATemplate {
                         document_referrer: Some(String::from("https://iframe.arkoselabs.com/")),
                         window_ancestor_origins: Some(vec![
-                            String::from("https://iframe.arkoselabs.com"),
+                            String::from("https://x.com"),
                             String::from("https://iframe.arkoselabs.com")
                         ]),
                         window_tree_index: Some(vec![1, 0]),
                         window_tree_structure: Some(String::from("[[],[[]]]")),
-                        window_location_href: Some(String::from("https://client-api.arkoselabs.com/v2/2.4.5/enforcement.6c9d6e9be9aa044cc5ce9548b4abe1b0.html")),
-                        client_config_sitedata_location_href: Some(String::from("https://iframe.arkoselabs.com/2CB16598-CB82-4CF7-B332-5990DB66F3AB/index.html")),
+                        window_location_href: None,
+                        client_config_sitedata_location_href: Some(format!("https://iframe.arkoselabs.com/{0}/index.html", ARGUMENTS.key)),
                         client_config_surl: Some(String::from("https://client-api.arkoselabs.com")),
                         client_config_language: None
                     },
                     audio: false,
-                    data: fetch_blob().await,
+                    data: None,
                     proxy: None,
                     arkose_api_url: String::from("https://client-api.arkoselabs.com"),
                 }).await;
@@ -346,7 +346,7 @@ async fn arkose_solve(data: Json<ArkoseRequest>) -> Result<Custom<Json<Value>>, 
             window_location_href: None,
             client_config_sitedata_location_href: Some(String::from("https://iframe.arkoselabs.com/B7D8911C-5CC8-A9A3-35B0-554ACEE604DA/index.html")),
             client_config_surl: Some(String::from("https://client-api.arkoselabs.com")),
-            client_config_language: Some(String::from("en"))
+            client_config_language: None
         };
     } else if data.site_key.eq("476068BF-9607-4799-B53D-966BE98E2B81") {
         bda_template = BDATemplate {
@@ -385,8 +385,8 @@ async fn arkose_solve(data: Json<ArkoseRequest>) -> Result<Custom<Json<Value>>, 
             ]),
             window_tree_index: Some(vec![1, 0]),
             window_tree_structure: Some(String::from("[[],[[]]]")),
-            window_location_href: Some(String::from("https://client-api.arkoselabs.com/v2/2.4.5/enforcement.6c9d6e9be9aa044cc5ce9548b4abe1b0.html")),
-            client_config_sitedata_location_href: Some(String::from("https://iframe.arkoselabs.com/2CB16598-CB82-4CF7-B332-5990DB66F3AB/index.html")),
+            window_location_href: None,
+            client_config_sitedata_location_href: Some(String::from("https://iframe.arkoselabs.com/867D55F2-24FD-4C56-AB6D-589EDAF5E7C5/index.html")),
             client_config_surl: Some(String::from("https://client-api.arkoselabs.com")),
             client_config_language: None
         }

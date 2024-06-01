@@ -32,7 +32,7 @@ use crate::commons::RUNTIME;
 pub mod tile;
 
 lazy_static! {
-    static ref HTTP_CLIENT: Client = ClientBuilder::new().danger_accept_invalid_certs(true).timeout(Duration::from_secs(25)).build().unwrap();
+    static ref HTTP_CLIENT: Client = ClientBuilder::new().timeout(Duration::from_secs(25)).build().unwrap();
     static ref CACHE: HashMap<String, RwLock<Vec<String>>> = HashMap::default();
     static ref CAPBYPASS_KEY: &'static str = "CB-9483a6f6b48c45e7aeba59417acf8fbc";
 }
@@ -69,21 +69,6 @@ async fn solve_cb(image_b64: &str, variant: &str) -> DortCapResult<u8> {
     }
     Err(CodeErr(0x01, "SOLVE_FAILED"))
 }
-
-fn create_headers(headers: &HeaderMap) -> DortCapResult<HeaderMap> {
-    let mut headers = headers.clone();
-    headers.insert("Accept", HeaderValue::try_from("image/png")?);
-    headers.insert("Accept-Encoding", HeaderValue::try_from("gzip, deflate, br")?);
-    headers.insert("Accept-Language", HeaderValue::try_from("en-US,en;q=0.7")?);
-    headers.insert("Origin", HeaderValue::try_from("https://client-api.arkoselabs.com")?);
-    headers.insert("Referer", HeaderValue::try_from("https://client-api.arkoselabs.com/fc/assets/ec-game-core/game-core/1.17.1/standard/index.html")?);
-    headers.insert("Sec-Fetch-Dest", HeaderValue::try_from("empty")?);
-    headers.insert("Sec-Fetch-Mode", HeaderValue::try_from("cors")?);
-    headers.insert("Sec-Fetch-Site", HeaderValue::try_from("same-origin")?);
-    headers.insert("User-Agent", HeaderValue::try_from(format!("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/{}.0", fastrand::u16(1..2414)))?);
-    return Ok(headers);
-}
-
 
 pub async fn get_answer(xevil_node: &XEvilNode, difficulty: u8, variant: &str, raw_grid: &Vec<u8>) -> DortCapResult<u8> {
     let lock = xevil_node.queue_lock.write().await;
@@ -146,7 +131,7 @@ impl TaskResult {
 
 impl Challenge {
     pub async fn new(http_session: &Client, headers: &HeaderMap, difficulty: u8, game_type: u8, variant: &str, image_url: &str, decryption_key: &Option<String>) -> DortCapResult<Self> {
-        let raw_grid_bytes = http_session.get(image_url).headers(create_headers(headers)?).send().await?.bytes().await?;
+        let raw_grid_bytes = http_session.get(image_url).headers(headers.clone()).send().await?.bytes().await?;
         let mut raw_grid = raw_grid_bytes.to_vec();
         if decryption_key.is_some() {
             raw_grid = BASE64_STANDARD.decode(cryptojs_decrypt(&String::from_utf8(raw_grid)?, decryption_key.as_ref().unwrap())?)?;
@@ -174,98 +159,6 @@ impl Challenge {
         let mut found = false;
         let mut indexes: Vec<u8> = (0..difficulty).collect();
         let mut idx = 0;
-        if game_type == 3 {
-            let mut tasks: Vec<JoinHandle<DortCapResult<TaskResult>>> = Vec::new();
-            for tile in &tiles {
-                let hash = tile.hash.clone();
-                let key = format!("Game Type {}:Tile Hashes ({}x{}):{}:{}", game_type, tile.width, tile.height, variant, &*hash);
-                tasks.push(tokio::spawn(async move {
-                    let idx = idx;
-                    Ok(TaskResult::new(idx, IMAGE_DATABASE.get().await.clone().get(key).await, hash))
-                }));
-                idx += 1;
-            }
-            for task in tasks {
-                let tile = task.await??;
-                match tile.result {
-                    Ok(res) => {
-                        match &*res {
-                            "good" => {
-                                if ARGUMENTS.print_colliding_hashes {
-                                    println!("good {game_type} {variant}");
-                                }
-                                selected_tile = tiles.clone().iter().position(|x| x.hash.eq(tile.hash.as_str())).ok_or(CodeErr(0x01, "TILE_SELECTION"))? as u8;
-                                found = true;
-                            },
-                            "bad" => {
-                                if ARGUMENTS.print_colliding_hashes {
-                                    println!("bad {game_type} {variant}");
-                                }
-                                indexes.retain(|x| *x as usize != tiles.clone().iter().position(|x| x.hash.eq(tile.hash.as_str())).unwrap());
-                            }
-                            _ => {},
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        } else {
-            let instruction_tile = instruction_tile.as_ref();
-            // selected_tile = tiles.clone().iter().position(|x| x.hash.eq(&*tile.hash)).ok_or(CodeErr(0x01, "TILE_SELECTION"))? as u8;
-            let mut tasks: Vec<JoinHandle<Result<(i32, String), DortCapError>>> = Vec::new();
-            let mut check_tasks: Vec<JoinHandle<Result<bool, DortCapError>>> = Vec::new();
-            if let Some(instruction_tile) = instruction_tile {
-                for tile in &tiles {
-                    let hash = tile.hash.clone();
-                    let key = format!("Game Type {}:Tile Hashes ({}x{}):{}:{}", game_type, tile.width, tile.height, variant, &*hash);
-                    tasks.push(tokio::spawn(async move {
-                        let mut db = IMAGE_DATABASE.get().await.clone();
-                        let idx = idx;
-                        if !CACHE.contains_async(&*hash).await {
-                            let result: RedisResult<Vec<String>> = db.lrange(&key, 0, -1).await;
-                            if let Ok(result) = result {
-                                let _ = CACHE.insert_async(hash.clone(), RwLock::with_max_readers(result, 1048576)).await;
-                            } else {
-                                let _ = CACHE.insert_async(hash.clone(), RwLock::with_max_readers(Vec::default(), 1048576)).await;
-                            }
-                        }
-                        Ok((idx, hash))
-                    }));
-                    idx += 1;
-                }
-                for task in tasks {
-                    let tile = task.await??;
-                    let h = tile.1;
-                    let rwl = CACHE.get_async(&*h).await.ok_or(CodeErr(0x01, "HM_GET_CACHE"))?;
-                    let rwl2 = rwl.get().read().await;
-                    for instr in &*rwl2 {
-                        let cloned_instruction_hash = instr.clone();
-                        let cloned_tile = instruction_tile.clone();
-                        let variant_string = variant.to_owned();
-                        check_tasks.push(tokio::spawn(async move {
-                            // would avoid using an Option<T> but the error returned is a fucking enum and I couldn't care less.
-                            let dist = cloned_tile.hash_raw.dist(&ImageHash::from_base64(&*cloned_instruction_hash).ok().ok_or(CodeErr(0x01, "HAMMING_DISTANCE"))?);
-                            if dist <= 0 {
-                                if ARGUMENTS.print_colliding_hashes {
-                                    println!("good {game_type} {variant_string}");
-                                }
-                                return Ok(true);
-                            }
-                            Ok(false) // so fucking aids but works... :/
-                        }));
-                    }
-                    drop(rwl2);
-                    while let Some(t) = check_tasks.pop() {
-                        let t = t.await??;
-                        if t {
-                            found = true;
-                            selected_tile = tiles.clone().iter().position(|x| x.hash.eq(&*h)).ok_or(CodeErr(0x01, "TILE_SELECTION"))? as u8;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
         selected_tile = *choice(&indexes).unwrap_or(&selected_tile);
         if !found && indexes.len() != 1 {
             match &*ARGUMENTS.ai_fallback_type.to_ascii_lowercase() {

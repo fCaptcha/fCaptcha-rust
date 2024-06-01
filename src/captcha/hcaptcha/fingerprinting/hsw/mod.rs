@@ -11,6 +11,8 @@ use crate::commons::error::DortCapResult;
 mod events;
 mod constants;
 mod structs;
+pub mod aes_encryption;
+mod string_encoding;
 
 lazy_static! {
     static ref CLIENT: Client = Client::new();

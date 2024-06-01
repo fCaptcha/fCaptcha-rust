@@ -1,11 +1,11 @@
 [solving]
 xevil_nodes = [
-#    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "45.45.238.213", queue_size = 55, port = 801 },
-#    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "45.45.238.213", queue_size = 55, port = 802 },
-#    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "45.45.238.213", queue_size = 55, port = 803 },
-#    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "45.45.238.213", queue_size = 55, port = 804 },
-#    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "45.45.238.213", queue_size = 55, port = 805 },
-    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "24.53.245.28", queue_size = 125, port = 6801 }
+    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "45.45.238.213", queue_size = 55, port = 801 },
+    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "45.45.238.213", queue_size = 55, port = 802 },
+    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "45.45.238.213", queue_size = 55, port = 803 },
+    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "45.45.238.213", queue_size = 55, port = 804 },
+    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "45.45.238.213", queue_size = 55, port = 805 },
+    { api_key = "3c31e9db8ae28dbca7e8e376d1045f3c", host = "24.53.246.73", queue_size = 125, port = 6801 }
 ]
 
 [solving.loadbalancer]
@@ -16,7 +16,7 @@ node-crash-detection-triggmer-action = "restart"
 mode = "smart"
 
 [networking]
-proxy = "socks5h://user:pass@185.91.127.20:1238"
+proxy = "socks5h://TQbANPSE:yAFoLmdSnBbwixko@80.75.212.79:1235"
 subnet = "2a12:b206::/32"
 
 [hashing]

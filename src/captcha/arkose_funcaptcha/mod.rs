@@ -98,12 +98,7 @@ impl ArkoseSession {
         let mut client: Client;
         let proxies = PROXIES.read().await;
         let proxy = request.proxy.as_deref().unwrap_or(fastrand::choice(&*proxies).ok_or(CodeErr(0x01, "PROXIES"))?);
-        let jar = Arc::new(Jar::default());
-        let ts = UNIX_EPOCH.elapsed()?.as_millis();
-        jar.add_cookie_str(&*format!("timestamp={}", ts), &Url::parse("https://arkoselabs.com")?);
         let mut client_builder = ClientBuilder::new()
-            .danger_accept_invalid_certs(true)
-            .cookie_provider(jar)
             .timeout(Duration::from_secs(20));
         let proxy = request.proxy.as_deref().unwrap_or(proxy);
         client_builder = client_builder.proxy(Proxy::all(proxy.replace("%SESSION_ID%", &*generate(23, "abcdef1234567890")).replace("%RND_PORT%", &*u16::to_string(&u16(10000..20000))))?);
@@ -151,6 +146,7 @@ impl ArkoseSession {
         data.insert("style_theme", "default");
         // arkose rnd value, used on aggression to detect repeated requests
         data.insert("rnd", &*rnd);
+        // data.insert("language", "en");
         // arkose customer blob, encrypted by the site, sent to arkose by the client, and, yes there's a better way to urldecode it i just don't give a fuck :/
         let blob = Option::as_deref(&self.request.data).unwrap_or("undefined").replace(" ", "%2B");
         data.insert("data[blob]", &*blob);
@@ -170,7 +166,7 @@ impl ArkoseSession {
             .headers(headers_cloned)
             .send().await?
             .text().await?;
-        println!("{}", response);
+        // println!("{}", response);
         Ok(from_str(&*response)?)
     }
 
@@ -333,7 +329,7 @@ impl ArkoseSession {
                 answers.push(json!(challenge.selected_clip));
                 challenges.push(challenge);
                 answer_response = self.submit_answer(game.dapi_breakers.as_deref().unwrap_or("NOT_REQUIRED"), &answers, game_type, &split_token, &game_token, &region).await?;
-                println!("{:?}", answer_response);
+                // println!("{:?}", answer_response);
                 if decryption_key.error.is_none() {
                     decryption_key = EncryptionKeyResponse {
                         error: None,

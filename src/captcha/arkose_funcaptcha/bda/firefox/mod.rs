@@ -1,14 +1,16 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::UNIX_EPOCH;
+
 use base64::{
     Engine,
     prelude::BASE64_STANDARD,
 };
-use chrono::{DateTime, Local, Utc};
+use base64::prelude::BASE64_URL_SAFE;
+use random_string::generate;
 use redis::AsyncCommands;
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, to_string, Value};
 use uuid::Uuid;
+
 use crate::{
     captcha::arkose_funcaptcha::{
         bda::{
@@ -20,6 +22,7 @@ use crate::{
     commons::error::DortCapResult,
     FINGERPRINTS,
 };
+use crate::captcha::arkose_funcaptcha::encryption::cryptojs_decrypt;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ChromeHeaders {
@@ -53,14 +56,19 @@ pub async fn get_encrypted_firefox_bda(version_url: &str, bda_template: &mut BDA
         bda_template.window_location_href = Some(String::from(version_url));
     }
     base[2]["value"] = Value::from(time);
+    // base[3]["value"] = Value::from(format!("{0}|72627afbfd19a741c7da1732218301ac", generate(32, "abcdef1234567890")));
     let time = UNIX_EPOCH.elapsed()?.as_secs();
     bda_template.update(&mut base[4]["value"]);
+    // niggerish way of doing this, but I do not give 2 fucks.
+    base[4]["value"][38]["value"] = Value::from(format!(r#"{0}\u2062"#, generate(32, "abcdef1234567890")));
+    base[4]["value"][56]["value"] = Value::from(format!(r#"{0}\u2062"#, time * 1000));
     base[4]["value"][76]["value"] = Value::from(&*uuid);
-    base[4]["value"][56]["value"] = Value::from(format!("{0}\\u0263", time / 1000));
+    let json_str = &*base.to_string().replace("\\\\u2062", "\\u2062");
     let time_range = time - time % 21600;
     let ua = &*base_t.headers.user_agent;
-    let encrypted_bda = encrypt(&*base.to_string(), &format!("{}{time_range}", ua))?;
-    let fingerprint = BASE64_STANDARD.encode(to_string(&encrypted_bda)?);
+    let encrypted_bda = encrypt(json_str, &format!("{}{time_range}", ua))?;
+    // println!("{}", String::from_utf8(cryptojs_decrypt(&encrypted_bda.to_string(), &format!("{}{time_range}", ua)).unwrap()).unwrap());
+    let fingerprint = BASE64_URL_SAFE.encode(to_string(&encrypted_bda)?);
     Ok(ArkoseFingerprint {
         fingerprint_enc: fingerprint,
         user_agent: String::from(ua),

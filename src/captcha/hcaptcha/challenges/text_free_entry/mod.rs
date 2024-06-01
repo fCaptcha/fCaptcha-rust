@@ -1,3 +1,4 @@
+use log::debug;
 use redis::aio::ConnectionManager;
 use redis::{AsyncCommands, RedisResult};
 use rocket::async_trait;
@@ -28,7 +29,11 @@ impl Challenge for TextFreeEntryChallenge<'_> {
                         answer.task_answer = String::from(text);
                     }
                 }
-                Err(_) => {}
+                Err(error) => {
+                    if error.is_io_error() {
+                        debug!("I/O ERORR @ text_free_entry (populate)");
+                    }
+                }
             }
         }
     }
