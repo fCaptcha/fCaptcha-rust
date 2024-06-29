@@ -11,7 +11,6 @@ use lazy_static::lazy_static;
 use random_string::generate;
 use reqwest::{ClientBuilder, Proxy, StatusCode};
 use reqwest::Client;
-use reqwest::cookie::Jar;
 use reqwest::header::HeaderMap;
 use rocket::figment::Source::Code;
 use rocket::request;
@@ -99,9 +98,8 @@ impl ArkoseSession {
         let proxies = PROXIES.read().await;
         let proxy = request.proxy.as_deref().unwrap_or(fastrand::choice(&*proxies).ok_or(CodeErr(0x01, "PROXIES"))?);
         let mut client_builder = ClientBuilder::new()
-            .timeout(Duration::from_secs(20));
-        let proxy = request.proxy.as_deref().unwrap_or(proxy);
-        client_builder = client_builder.proxy(Proxy::all(proxy.replace("%SESSION_ID%", &*generate(23, "abcdef1234567890")).replace("%RND_PORT%", &*u16::to_string(&u16(10000..20000))))?);
+            .timeout(Duration::from_secs(40));
+        client_builder = client_builder.proxy(Proxy::all(proxy.replace("%SESSION_ID%", &*generate(12, "abcdef1234567890")).replace("%RND_PORT%", &*u16::to_string(&u16(10000..20000))))?);
         client = client_builder.build()?;
         drop(proxies);
         if !CAPI_VERSIONS_CACHE.read().await.contains_key(&request.site_key) {
@@ -146,9 +144,9 @@ impl ArkoseSession {
         data.insert("style_theme", "default");
         // arkose rnd value, used on aggression to detect repeated requests
         data.insert("rnd", &*rnd);
-        // data.insert("language", "en");
+        data.insert("language", "en");
         // arkose customer blob, encrypted by the site, sent to arkose by the client, and, yes there's a better way to urldecode it i just don't give a fuck :/
-        let blob = Option::as_deref(&self.request.data).unwrap_or("undefined").replace(" ", "%2B");
+        let blob = Option::as_deref(&self.request.data).unwrap_or("undefined").replace(" ", "+");
         data.insert("data[blob]", &*blob);
         // data.insert("data[id]", "customer_transparent");
         let mut headers_cloned = self.headers.clone();
@@ -156,7 +154,7 @@ impl ArkoseSession {
         time -= time % 21600;
         headers_cloned.insert("x-ark-esync-value", time.to_string().parse()?);
         let mut new_data = String::new();
-        for x in &data {
+        for x in data {
             new_data += &*format!("{0}={1}&", x.0, utf8_percent_encode(x.1, ENCODING_SET).collect::<String>());
         }
         #[allow(unused)]
@@ -166,7 +164,6 @@ impl ArkoseSession {
             .headers(headers_cloned)
             .send().await?
             .text().await?;
-        // println!("{}", response);
         Ok(from_str(&*response)?)
     }
 
@@ -294,7 +291,7 @@ impl ArkoseSession {
         if game_type != 101 {
             let images = custom_gui._challenge_imgs.ok_or(CodeErr(0x01, "IMAGES"))?;
             waves = images.len() as i32;
-            println!("t: {} w: {} g: {}", split_token, waves, instruction_string.to_string());
+            // println!("t: {} w: {} g: {}", split_token, waves, instruction_string.to_string());
             let mut challenges: Vec<Challenge> = Vec::new();
             for image_url in &images {
                 let challenge = Challenge::new(&self.client, &self.headers, game_data.game_difficulty.unwrap_or(6) as u8, game_type as u8, &instruction_string, &image_url, &decryption_key.decryption_key).await?;
@@ -329,7 +326,6 @@ impl ArkoseSession {
                 answers.push(json!(challenge.selected_clip));
                 challenges.push(challenge);
                 answer_response = self.submit_answer(game.dapi_breakers.as_deref().unwrap_or("NOT_REQUIRED"), &answers, game_type, &split_token, &game_token, &region).await?;
-                // println!("{:?}", answer_response);
                 if decryption_key.error.is_none() {
                     decryption_key = EncryptionKeyResponse {
                         error: None,

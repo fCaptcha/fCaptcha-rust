@@ -1,4 +1,4 @@
-use crate::captcha::arkose_funcaptcha::bda::firefox::ChromeHeaders;
+use crate::captcha::arkose_funcaptcha::bda::firefox::BrowserHeaders;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -109,7 +109,7 @@ pub struct NetworkInfo {
 pub struct ArkoseFingerprint {
     pub fingerprint_enc: String,
     pub user_agent: String,
-    pub headers: ChromeHeaders,
+    pub headers: BrowserHeaders,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

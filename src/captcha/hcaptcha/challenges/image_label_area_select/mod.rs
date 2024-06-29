@@ -29,7 +29,7 @@ impl Challenge for ImageLabelAreaSelect<'_> {
         let mut database = ConnectionManager::clone(ANSWERS.get().await);
         for task in tasks {
             let task_hash = &*task.task_hash;
-            let result: RedisResult<String> = AsyncCommands::get(&mut database, format!("Image Challenges:{0}:{1}", self.session.get_requester_question().await, task_hash)).await;
+            let result: RedisResult<String> = AsyncCommands::get(&mut database, format!("Image Challenges:{0}:{1}", self.session.get_requester_question(), task_hash)).await;
             match result {
                 Ok(ref text) => {
                     for mut answer in &mut self.answers {

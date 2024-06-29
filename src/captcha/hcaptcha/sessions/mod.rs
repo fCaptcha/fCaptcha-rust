@@ -36,10 +36,10 @@ impl HCaptchaSession {
         })
     }
 
-    pub async fn get_requester_question(&self) -> String {
+    pub fn get_requester_question(&self) -> String {
         todo!()
     }
-    pub async fn get_language(&self) -> String {
+    pub fn get_language(&self) -> String {
         unimplemented!()
     }
 }

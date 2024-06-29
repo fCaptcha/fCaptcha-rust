@@ -20,11 +20,11 @@ use serde::{Deserialize, Serialize};
 use crossterm::terminal::SetTitle;
 use lazy_static::lazy_static;
 use redis::aio::ConnectionManager;
-use redis::{AsyncCommands, Client};
+use redis::{AsyncCommands, Client, RedisResult};
 use rocket::http::Status;
 use rocket::serde::json::Json;
 use tokio::sync::{RwLock};
-use v8::{new_unprotected_default_platform, V8};
+use v8::{new_default_platform, new_unprotected_default_platform, V8};
 use async_once::AsyncOnce;
 use fastrand::u16;
 use fmtools::obfstr;
@@ -41,7 +41,9 @@ use crate::captcha::recaptcha_v3::ReCaptchaV3;
 use crate::commons::console::{created_account, solved};
 use crate::commons::console::SolveType::{CUSTOMER, INTERNAL};
 use crate::commons::error::{DortCapError, DortCapResult};
+use crate::commons::error::DortCapError::CodeErr;
 use crate::commons::RUNTIME;
+use crate::commons::utils::get_proxy_ipv6;
 use crate::tools::generators::github::fetch_blob;
 use crate::tools::generators::roblox_register;
 use crate::tools::generators::outlook::OutlookCreator;
@@ -136,12 +138,10 @@ struct Args {
 
 async fn get_redis_instance(db_num: u16) -> ConnectionManager {
     loop {
-        let client = Client::open(format!("redis://default:ACCA5B570561DCFA5ACB1417C69F2900DAFF8A4FD39A2E66C36DF2BD796F0BE1CFEA8AF2DB18153874215E08BFDEC4A89A397EC53E52DAC33A1E9D0B17A52D43@45.45.238.213:42081/{db_num}"));
-        if client.is_ok() {
+        if let Ok(ref client) = Client::open(format!("redis://default:ACCA5B570561DCFA5ACB1417C69F2900DAFF8A4FD39A2E66C36DF2BD796F0BE1CFEA8AF2DB18153874215E08BFDEC4A89A397EC53E52DAC33A1E9D0B17A52D43@87.121.69.44:1025/{db_num}")) {
             loop {
-                let connection_manager = client.as_ref().unwrap().get_connection_manager().await;
-                if connection_manager.is_ok() {
-                    return connection_manager.unwrap();
+                if let Ok(connection_manager) = client.get_connection_manager().await {
+                    return connection_manager;
                 }
             }
         }
@@ -149,23 +149,26 @@ async fn get_redis_instance(db_num: u16) -> ConnectionManager {
 }
 
 #[get("/stats.json")]
-async fn dortcap_version() -> Custom<String> {
+async fn fcaptcha_version() -> Custom<String> {
     let json_data = json!({
-        "version": "1.3.0",
+        "version": "1.4.0",
         "branch": "release-candidate-5",
         "solvers": {
             "arkose": {
-                "capi-support": "any"
+                "capi-support": "any",
+                "threads": *THREADS.read().await
             },
-            "hcaptcha": {
-
-            },
-            "threads": *THREADS.read().await
         },
-        "authors": [
-            "dort", // I made the entire solver pretty much LOL
-            "slotth"
-        ]
+        "authors": {
+            "arkose": [
+                "dort",
+                "slotth"
+            ],
+            "hcaptcha": [
+                "dort",
+                "dexv"
+            ]
+        }
     });
     return Custom(Status::Ok, to_string_pretty(&json_data).unwrap());
 }
@@ -177,31 +180,29 @@ lazy_static! {
         RwLock::new(data.collect())
     })();
     static ref DORTCAP_CONFIG: DortCapConfig = toml::from_str(&*read_to_string("data/DortCap.toml").expect("Config file not found in data/DortCap.toml!")).expect("Config parse failure.");
-    static ref THREADS: RwLock<HashMap<String, i32>> = RwLock::default();
+    static ref THREADS: RwLock<HashMap<String, u128>> = RwLock::default();
+    static ref C_TOTAL_THREADS: RwLock<u128> = RwLock::default();
     static ref SOLVED: RwLock<u128> = RwLock::default();
     static ref ARGUMENTS: Args = Args::parse();
     static ref REDIS_USERS_PPU: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
         return get_redis_instance(300).await;
     });
-    static ref REDIS_USERS: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
-        return get_redis_instance(301).await;
-    });
     static ref FINGERPRINTS: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
         return get_redis_instance(302).await;
     });
     static ref IMAGE_DATABASE: AsyncOnce<ConnectionManager> = AsyncOnce::new(async {
-        return get_redis_instance(303).await;
+        return get_redis_instance(347).await;
     });
 }
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 64)]
 async fn main() -> DortCapResult<()> {
-    let platform = new_unprotected_default_platform(600, false).make_shared();
+    let platform = new_default_platform(5000, false).make_shared();
     V8::initialize_platform(platform);
     V8::initialize();
     RUNTIME.spawn(async {
         loop {
-            let current_customer_threads: i32 = THREADS.read().await.values().sum();
+            let current_customer_threads: u128 = *C_TOTAL_THREADS.read().await;
             let solved = *SOLVED.read().await;
             if execute!(stdout(), SetTitle(format!("fCaptcha Solver [{0}] | Customer Threads: {current_customer_threads} | Solved Captchas: {solved}", if ARGUMENTS.start_api {
                 "SERVER"
@@ -215,13 +216,14 @@ async fn main() -> DortCapResult<()> {
     if ARGUMENTS.start_api {
         RUNTIME.spawn(async move {
             let _rocket = rocket::build()
-                .mount("/solver", routes![dortcap_version, arkose_solve, get_balance])
+                .mount("/solver", routes![fcaptcha_version, arkose_solve, get_balance])
                 .mount("/wh", routes![topup])
                 // put function names in routes![] (for dexv)
                 .mount("/", routes![])
                 .launch()
                 .await.expect("API Crashed.");
         });
+        println!("Post API Start.");
     }
     for _ in 0..ARGUMENTS.threads {
         RUNTIME.spawn(async move {
@@ -272,7 +274,6 @@ async fn main() -> DortCapResult<()> {
             }
         });
     }
-    println!("Post API Start.");
     loop {}
 }
 
@@ -307,6 +308,7 @@ pub struct ArkoseRequest {
 }
 
 fn err_fn(err: DortCapError) -> Custom<Json<Value>> {
+    println!("{}", err);
     Custom(Status::InternalServerError, Json(json!({
         "error": err.to_string()
     })))
@@ -320,6 +322,7 @@ async fn arkose_solve(data: Json<ArkoseRequest>) -> Result<Custom<Json<Value>>, 
             "error": "INVALID_KEY_OR_THREAD_LIMIT_REACHED"
         }))));
     }
+    *C_TOTAL_THREADS.write().await += 1;
     let ark_url = data.surl.as_deref().unwrap_or("https://client-api.arkoselabs.com");
     let mut bda_template = BDATemplate {
         document_referrer: None,
@@ -391,7 +394,8 @@ async fn arkose_solve(data: Json<ArkoseRequest>) -> Result<Custom<Json<Value>>, 
             client_config_language: None
         }
     }
-    let arkose = ArkoseSession::new(FunCaptchaRequest {
+    let error = err_fn(CodeErr(0x01, "SOLVE_FAILED"));
+    if let Ok(arkose) = ArkoseSession::new(FunCaptchaRequest {
         arkose_api_url: String::from(ark_url),
         audio: false,
         bda_template: data.bda_template.clone().unwrap_or(bda_template),
@@ -399,21 +403,26 @@ async fn arkose_solve(data: Json<ArkoseRequest>) -> Result<Custom<Json<Value>>, 
         site_key: data.site_key.clone(),
         proxy: data.proxy.clone(),
         site_url: data.site_url.clone(),
-    }).await.map_err(err_fn)?;
-    let result = arkose.solve().await.map_err(err_fn)?;
-    solved(CUSTOMER, result.token.as_deref(), result.variant.as_deref(), result.waves.as_ref(), result.solved.as_ref()).await;
-    if let Some(solved) = result.solved.as_ref() {
-        if *solved {
-            reduce_bal(&*data.api_key, 0.00025).await;
+    }).await {
+        if let Ok(result) = arkose.solve().await {
+            solved(CUSTOMER, result.token.as_deref(), result.variant.as_deref(), result.waves.as_ref(), result.solved.as_ref()).await;
+            if let Some(solved) = result.solved.as_ref() {
+                if *solved {
+                    reduce_bal(&*data.api_key, 0.00025).await;
+                }
+            }
+            *C_TOTAL_THREADS.write().await -= 1;
+            return Ok(Custom(Status::Ok, Json(json!({
+                "solved": result.solved,
+                "token": result.token,
+                "game": {
+                    "variant": result.variant,
+                    "waves": result.waves
+                }
+            }))));
         }
     }
-    return Ok(Custom(Status::Ok, Json(json!({
-        "solved": result.solved,
-        "token": result.token,
-        "game": {
-            "variant": result.variant,
-            "waves": result.waves
-        }
-    }))));
+    *C_TOTAL_THREADS.write().await -= 1;
+    Ok(error)
 }
 

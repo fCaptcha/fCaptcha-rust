@@ -26,19 +26,6 @@ fn fmt_err(err: &impl Error, formatter: &mut Formatter<'_>) -> FormatResult {
 
 pub type DortCapResult<T> = Result<T, DortCapError>;
 
-#[macro_export] macro_rules! conv_option {
-    ($x:expr) => {
-        match ($x) {
-            Some(t) => {
-                Ok(t)
-            },
-            None => {
-                Err(crate::commons::error::DortCapError::DetailedInternalErr("UNWRAP_FAILED"))
-            }
-        }
-    };
-}
-
 #[derive(thiserror::Error)]
 pub enum DortCapError {
     #[error("SOMETHING_WENT_HORRIBLY_FUCKING_WRONG_ERROR")]

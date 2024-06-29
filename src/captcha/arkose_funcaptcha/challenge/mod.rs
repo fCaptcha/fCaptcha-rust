@@ -30,6 +30,7 @@ use crate::commons::error::DortCapError::CodeErr;
 use crate::commons::RUNTIME;
 
 pub mod tile;
+mod hash_thresholds;
 
 lazy_static! {
     static ref HTTP_CLIENT: Client = ClientBuilder::new().timeout(Duration::from_secs(25)).build().unwrap();
@@ -52,7 +53,6 @@ async fn solve_cb(image_b64: &str, variant: &str) -> DortCapResult<u8> {
         task_res = HTTP_CLIENT.post(url).json(&payload).send().await?.json().await?;
     }
     for _ in 0..150 {
-        sleep(Duration::from_millis(50)).await;
         if task_res["errorId"] == 0 {
             let url = "https://capbypass.com/api/getTaskResult";
             let payload = json!({
@@ -69,6 +69,12 @@ async fn solve_cb(image_b64: &str, variant: &str) -> DortCapResult<u8> {
     }
     Err(CodeErr(0x01, "SOLVE_FAILED"))
 }
+
+fn create_headers(headers: &HeaderMap) -> DortCapResult<HeaderMap> {
+    let headers = headers.clone();
+    return Ok(headers);
+}
+
 
 pub async fn get_answer(xevil_node: &XEvilNode, difficulty: u8, variant: &str, raw_grid: &Vec<u8>) -> DortCapResult<u8> {
     let lock = xevil_node.queue_lock.write().await;
@@ -131,7 +137,7 @@ impl TaskResult {
 
 impl Challenge {
     pub async fn new(http_session: &Client, headers: &HeaderMap, difficulty: u8, game_type: u8, variant: &str, image_url: &str, decryption_key: &Option<String>) -> DortCapResult<Self> {
-        let raw_grid_bytes = http_session.get(image_url).headers(headers.clone()).send().await?.bytes().await?;
+        let raw_grid_bytes = http_session.get(image_url).headers(create_headers(headers)?).send().await?.bytes().await?;
         let mut raw_grid = raw_grid_bytes.to_vec();
         if decryption_key.is_some() {
             raw_grid = BASE64_STANDARD.decode(cryptojs_decrypt(&String::from_utf8(raw_grid)?, decryption_key.as_ref().unwrap())?)?;
@@ -159,18 +165,125 @@ impl Challenge {
         let mut found = false;
         let mut indexes: Vec<u8> = (0..difficulty).collect();
         let mut idx = 0;
-        selected_tile = *choice(&indexes).unwrap_or(&selected_tile);
+        if game_type == 3 {
+            let mut tasks: Vec<JoinHandle<DortCapResult<TaskResult>>> = Vec::new();
+            for tile in &tiles {
+                let hash = tile.hash.clone();
+                let key = format!("Game Type {}:Tile Hashes ({}x{}):{}:{}", game_type, tile.width, tile.height, variant, &*hash);
+                tasks.push(tokio::spawn(async move {
+                    let idx = idx;
+                    Ok(TaskResult::new(idx, IMAGE_DATABASE.get().await.clone().get(key).await, hash))
+                }));
+                idx += 1;
+            }
+            for task in tasks {
+                let tile = task.await??;
+                match tile.result {
+                    Ok(res) => {
+                        match &*res {
+                            "good" => {
+                                if ARGUMENTS.print_colliding_hashes {
+                                    println!("good {game_type} {variant}");
+                                }
+                                selected_tile = tiles.clone().iter().position(|x| x.hash.eq(tile.hash.as_str())).ok_or(CodeErr(0x01, "TILE_SELECTION"))? as u8;
+                                found = true;
+                            },
+                            "bad" => {
+                                if ARGUMENTS.print_colliding_hashes {
+                                    println!("bad {game_type} {variant}");
+                                }
+                                indexes.retain(|x| *x as usize != tiles.clone().iter().position(|x| x.hash.eq(tile.hash.as_str())).unwrap());
+                            }
+                            _ => {},
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        } else {
+            let instruction_tile = instruction_tile.as_ref();
+            // selected_tile = tiles.clone().iter().position(|x| x.hash.eq(&*tile.hash)).ok_or(CodeErr(0x01, "TILE_SELECTION"))? as u8;
+            let mut tasks: Vec<JoinHandle<Result<(i32, String, String), DortCapError>>> = Vec::new();
+            let mut check_tasks: Vec<JoinHandle<Result<(bool, String), DortCapError>>> = Vec::new();
+            if let Some(instruction_tile) = instruction_tile {
+                for tile in &tiles {
+                    for hash_type in ["Correct", "Incorrect"] {
+                        let hash = tile.hash.clone();
+                        let key = format!("Game Type {}:Tile Hashes ({}x{}):{}:{}:{}", game_type, tile.width, tile.height, variant, hash_type, &*hash);
+                        tasks.push(tokio::spawn(async move {
+                            let mut db = IMAGE_DATABASE.get().await.clone();
+                            let idx = idx;
+                            if !CACHE.contains_async(&*hash).await {
+                                let result: RedisResult<Vec<String>> = db.lrange(&*key, 0, -1).await;
+                                if let Ok(result) = result {
+                                    let _ = CACHE.insert_async(hash.clone(), RwLock::with_max_readers(result, 1048576)).await;
+                                } else {
+                                    let _ = CACHE.insert_async(hash.clone(), RwLock::with_max_readers(Vec::default(), 1048576)).await;
+                                }
+                            }
+                            Ok((idx, hash, key))
+                        }));
+                        idx += 1;
+                    }
+                }
+                for task in tasks {
+                    let tile = task.await??;
+                    let h = tile.1;
+                    let rwl = CACHE.get_async(&*h).await.ok_or(CodeErr(0x01, "HM_GET_CACHE"))?;
+                    let rwl2 = rwl.get().read().await;
+                    for instr in &*rwl2 {
+                        let cloned_instruction_hash = instr.clone();
+                        let cloned_tile = instruction_tile.clone();
+                        let variant_string = variant.to_owned();
+                        let cloned_validity = tile.2.clone();
+                        check_tasks.push(tokio::spawn(async move {
+                            // would avoid using an Option<T> but the error returned is a fucking enum and I couldn't care less.
+                            let dist = cloned_tile.hash_raw.dist(&ImageHash::from_base64(&*cloned_instruction_hash).ok().ok_or(CodeErr(0x01, "HAMMING_DISTANCE"))?);
+                            if dist <= hash_thresholds::get_threshold(&*variant_string) {
+                                let valid = !cloned_validity.contains(":Incorrect:");
+                                if ARGUMENTS.print_colliding_hashes {
+                                    println!("found {game_type} {variant_string} {dist} {valid}");
+                                }
+                                return Ok((valid, cloned_tile.hash.clone()));
+                            }
+                            Err(CodeErr(0x01, "XD"))
+                        }));
+                    }
+                    drop(rwl2);
+                }
+                while let Some(t) = check_tasks.pop() {
+                    if let Ok((valid, hash)) = t.await? {
+                        if valid {
+                            found = true;
+                            selected_tile = tiles.clone().iter().position(|x| x.hash.eq(&*hash)).ok_or(CodeErr(0x01, "TILE_SELECTION"))? as u8;
+                            break
+                        } else {
+                            tiles.retain(|x| !x.hash.eq(&*hash));
+                        }
+                    }
+                }
+            }
+        }
+        if indexes.len() == 1 || !found {
+            selected_tile = *choice(&indexes).unwrap_or(&selected_tile);
+        }
         if !found && indexes.len() != 1 {
             match &*ARGUMENTS.ai_fallback_type.to_ascii_lowercase() {
                 "xevil" => {
-                    let mut node = choice(&DORTCAP_CONFIG.solving.xevil_nodes).ok_or(CodeErr(0x01, "IMAGE_SOLVER_NODE"))?;
-                    while *node.current_queue_size.read().await > node.queue_size {
-                        node = choice(&DORTCAP_CONFIG.solving.xevil_nodes).ok_or(CodeErr(0x02, "IMAGE_SOLVER_NODE"))?;
+                    if variant.eq("orbit_match_game") {
+                        if let Ok(answer) = solve_cb(&*BASE64_STANDARD.encode(raw_grid.as_slice()), variant).await {
+                            selected_tile = answer;
+                        }
+                    } else {
+                        let mut node = choice(&DORTCAP_CONFIG.solving.xevil_nodes).ok_or(CodeErr(0x01, "IMAGE_SOLVER_NODE"))?;
+                        while *node.current_queue_size.read().await > node.queue_size {
+                            node = choice(&DORTCAP_CONFIG.solving.xevil_nodes).ok_or(CodeErr(0x02, "IMAGE_SOLVER_NODE"))?;
+                        }
+                        if let Ok(selected_tile_result) = get_answer(node, difficulty, variant, &raw_grid).await {
+                            selected_tile = selected_tile_result;
+                        }
+                        *node.current_queue_size.write().await -= 1;
                     }
-                    if let Ok(selected_tile_result) = get_answer(node, difficulty, variant, &raw_grid).await {
-                        selected_tile = selected_tile_result;
-                    }
-                    *node.current_queue_size.write().await -= 1;
                 }
                 "cb" => {
                     // let task = FunCaptchaClassificationTask::new(&*BASE64_STANDARD.encode(raw_grid.as_slice()), "orbit_match_game");
@@ -202,17 +315,21 @@ impl Challenge {
             let opt = self.instruction_tile.as_ref();
             if let Some(instruction_tile) = opt {
                 let hash = &*tile.hash;
-                if index == self.selected_tile {
-                    let mut secondary = CACHE.get_async(hash).await.ok_or(CodeErr(0x01, "HM_SET_REDIS"))?;
-                    let secondary = secondary.get();
-                    let mut secondary_guard = secondary.write().await;
-                    if !secondary_guard.contains(&instruction_tile.hash) {
-                        secondary_guard.push(String::from(&*instruction_tile.hash));
-                        loop {
-                            let result: RedisResult<()> = database.lpush(format!("Game Type {}:Tile Hashes ({}x{}):{}:{}", self.game_type, tile.width, tile.height, self.variant, hash), &*instruction_tile.hash).await;
-                            if result.is_ok() {
-                                break;
-                            }
+                let mut secondary = CACHE.get_async(hash).await.ok_or(CodeErr(0x01, "HM_SET_REDIS"))?;
+                let secondary = secondary.get();
+                let mut secondary_guard = secondary.write().await;
+                if !secondary_guard.contains(&instruction_tile.hash) {
+                    secondary_guard.push(String::from(&*instruction_tile.hash));
+                    loop {
+                        let hash_type = if index == self.selected_tile {
+                            "Correct"
+                        } else {
+                            "Incorrect"
+                        };
+                        // fucking end my suffering LMAO
+                        let result: RedisResult<()> = database.lpush(format!("Game Type {}:Tile Hashes ({}x{}):{}:{}:{}", self.game_type, tile.width, tile.height, self.variant, hash_type, hash), &*instruction_tile.hash).await;
+                        if result.is_ok() {
+                            break;
                         }
                     }
                     drop(secondary_guard);

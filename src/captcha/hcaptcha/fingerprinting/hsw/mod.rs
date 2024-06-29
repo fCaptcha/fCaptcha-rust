@@ -13,6 +13,7 @@ mod constants;
 mod structs;
 pub mod aes_encryption;
 mod string_encoding;
+mod checksum;
 
 lazy_static! {
     static ref CLIENT: Client = Client::new();

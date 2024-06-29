@@ -1,5 +1,5 @@
-mod challenges;
-mod motion_data;
-mod sessions;
+pub mod challenges;
+pub mod motion_data;
+pub mod sessions;
 pub mod fingerprinting;
-mod hashing;
+pub mod hashing;

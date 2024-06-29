@@ -6,9 +6,10 @@ use self::cipher::encrypt_pw;
 use reqwest::header::{HeaderMap, HeaderValue};
 use rand::Rng;
 use random_string::generate;
+use regex::Regex;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
-use crate::{ARGUMENTS, DORTCAP_CONFIG};
+use crate::{ARGUMENTS, conv_option, DORTCAP_CONFIG};
 use crate::captcha::arkose_funcaptcha::ArkoseSession;
 use crate::captcha::arkose_funcaptcha::bda::templates::BDATemplate;
 use crate::captcha::arkose_funcaptcha::structs::{FunCaptchaRequest};
@@ -51,7 +52,8 @@ pub(crate) struct OutlookData {
     canary: String,
     random_num: String,
     key: String,
-    ski: String
+    ski: String,
+    fpt: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -143,19 +145,27 @@ impl OutlookCreator {
         let random_num = extract_value(&body, "var randomNum=\"", "\"")?;
         let key = extract_value(&body, "var Key=\"", "\"")?;
         let ski = extract_value(&body, "var SKI=\"", "\"")?;
+        // let fpt = format!("https://fpt.live.com/?{0}", extract_value(&body, "src=\"https://fpt.live.com/?", "\"")?);
         Some(OutlookData {
             uaid,
             tcxt,
             canary,
             random_num,
             key,
-            ski
+            ski,
+            fpt: "".to_string(),
         })
     }
 
 
     pub(crate) async fn create_account(&self) -> DortCapResult<String> {
         let data = self.fetch_params().await.ok_or(InternalErr)?;
+        // let script_content = &*self.client.get(&*data.fpt).send().await?.text().await?;
+        // let txn_id = conv_option!(Regex::new(r"txnId\s*=\s*'([^']+)'")?.find(script_content))?.as_str();
+        // let ticks =  conv_option!(Regex::new(r"ticks\s*=\s*'([^']+)'")?.find(script_content))?.as_str();
+        // let rid = conv_option!(Regex::new(r"rid\s*=\s*'([^']+)'")?.find(script_content))?.as_str();
+        // let auth_key = conv_option!(Regex::new(r"authKey\s*=\s*'([^']+)'")?.find(script_content))?.as_str();
+        // let cid = conv_option!(Regex::new(r"cid\s*=\s*'([^']+)'")?.find(script_content))?.as_str();
         let pw2 = &generate(11, "ABCDEFabcdef0123456890!");
         let pw = encrypt_pw(pw2, &data.random_num, &data.key);
         let xd = format!("{}{}", &ARGUMENTS.name_prefix, generate(13, "abcdef0123456890"));

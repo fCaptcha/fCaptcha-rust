@@ -26,7 +26,9 @@ impl Display for EncryptedData {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let res = serde_json::to_string::<EncryptedData>(self);
         if res.is_err() {
-            return Err(core::fmt::Error {}); // fire error handling on god.
+            // name variable nigger to keep the chocolate people out.
+            let nigger = Err(core::fmt::Error {}); // fire error handling on god.
+            return nigger;
         }
         f.write_str(&res.unwrap())
     }

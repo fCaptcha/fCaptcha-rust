@@ -62,6 +62,7 @@ pub(crate) async fn register_roblox() {
     // END AIDS
     let mut headerss = HeaderMap::new();
     headerss.insert("x-csrf-token", HeaderValue::from_str(&csrf).unwrap());
+    headerss.insert("User-Agent", HeaderValue::from_str("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0").unwrap());
     let blob_result = client.post("https://auth.roblox.com/v2/signup").headers(headerss).json(&data.to_owned()).send().await;
     if blob_result.is_err() {
         return;
@@ -81,7 +82,7 @@ pub(crate) async fn register_roblox() {
         if let Some(challenge_id_value) = blob_resp.headers().get("rblx-challenge-id") {
             let challenge_id = challenge_id_value.to_str().unwrap().to_owned();
             let session = ArkoseSession::new(FunCaptchaRequest {
-                site_url: String::from("https://www.roblox.com"),
+                site_url: String::from("https://roblox.com"),
                 site_key: String::from("A2A14B1D-1AF3-C791-9BBC-EE33CC7A0A6F"),
                 bda_template: BDATemplate {
                     document_referrer: Some(String::from("https://www.roblox.com/")),
@@ -97,7 +98,7 @@ pub(crate) async fn register_roblox() {
                     client_config_language: None,
                 },
                 data: Some(String::from(data_exchange_blob.as_str().unwrap_or(""))),
-                proxy: Some(DORTCAP_CONFIG.networking.proxy.replace("%SESSION_ID%", &*generate(23, "abcdef1234567890"))),
+                proxy: None,
                 arkose_api_url: String::from("https://roblox-api.arkoselabs.com"),
                 audio: false,
             }).await;

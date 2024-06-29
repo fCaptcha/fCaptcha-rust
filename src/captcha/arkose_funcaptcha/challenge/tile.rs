@@ -1,14 +1,13 @@
-use hex::ToHex;
-use image::{DynamicImage};
-use image::imageops::Nearest;
+use image::DynamicImage;
 use image_hasher::{HashAlg, HasherConfig, ImageHash};
-use image_hasher::HashAlg::{DoubleGradient, Mean};
-use crate::DORTCAP_CONFIG;
+use image_hasher::HashAlg::DoubleGradient;
+
 use crate::commons::error::DortCapResult;
+use crate::DORTCAP_CONFIG;
 
 pub async fn hash_image(img: &DynamicImage) -> DortCapResult<(ImageHash, String)> {
     let size = DORTCAP_CONFIG.hashing.hash_size;
-    let hasher_config = HasherConfig::new().hash_size(size, size).hash_alg(HashAlg::Gradient).preproc_dct();
+    let hasher_config = HasherConfig::new().hash_size(size, size).hash_alg(HashAlg::Median).preproc_dct();
     let h = hasher_config.to_hasher().hash_image(img);
     Ok((h.clone(), h.to_base64()))
 }

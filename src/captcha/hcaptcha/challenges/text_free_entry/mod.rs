@@ -1,4 +1,3 @@
-use log::debug;
 use redis::aio::ConnectionManager;
 use redis::{AsyncCommands, RedisResult};
 use rocket::async_trait;
@@ -6,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use structs::Answer;
 use crate::captcha::hcaptcha::sessions::{HCaptchaSession, structs::Task};
+use crate::captcha_debug;
 use super::constants::ANSWERS;
 use super::Challenge;
 
@@ -22,7 +22,7 @@ impl Challenge for TextFreeEntryChallenge<'_> {
         let mut database = ConnectionManager::clone(ANSWERS.get().await);
         for task in tasks {
             let task_hash = &*task.task_hash;
-            let result: RedisResult<String> = database.get(format!("Text Challenges:{0}:{1}", self.session.get_language().await, task_hash)).await;
+            let result: RedisResult<String> = database.get(format!("Text Challenges:{0}:{1}", self.session.get_language(), task_hash)).await;
             match result {
                 Ok(ref text) => {
                     for mut answer in &mut self.answers {
@@ -31,7 +31,7 @@ impl Challenge for TextFreeEntryChallenge<'_> {
                 }
                 Err(error) => {
                     if error.is_io_error() {
-                        debug!("I/O ERORR @ text_free_entry (populate)");
+                        captcha_debug!("I/O ERORR @ text_free_entry (populate)");
                     }
                 }
             }
@@ -51,7 +51,7 @@ impl Challenge for TextFreeEntryChallenge<'_> {
     }
 
     async fn save_answers_to_database(&self) {
-        let language = self.session.get_language().await;
+        let language = self.session.get_language();
         for answer in &self.answers {
             let answer_cloned = String::from(&answer.task_answer);
             let hash_cloned = String::from(&answer.task_hash);

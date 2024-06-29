@@ -1,1 +1,1 @@
-socks5h://TQbANPSE:yAFoLmdSnBbwixko@80.75.212.79:1235
+http://toffy:EhqSCpLauqPUmpus_session-%SESSION_ID%@delta.proxiflare.com:47212
