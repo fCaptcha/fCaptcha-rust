@@ -15,7 +15,7 @@ use crate::captcha::arkose_funcaptcha::bda::templates::BDATemplate;
 use crate::captcha::arkose_funcaptcha::structs::{FunCaptchaRequest};
 use crate::commons::console::{solved};
 use crate::commons::console::SolveType::INTERNAL;
-use crate::commons::error::DortCapResult;
+use crate::commons::error::FCaptchaResult;
 use crate::commons::error::DortCapError::InternalErr;
 
 mod cipher;
@@ -158,7 +158,7 @@ impl OutlookCreator {
     }
 
 
-    pub(crate) async fn create_account(&self) -> DortCapResult<String> {
+    pub(crate) async fn create_account(&self) -> FCaptchaResult<String> {
         let data = self.fetch_params().await.ok_or(InternalErr)?;
         // let script_content = &*self.client.get(&*data.fpt).send().await?.text().await?;
         // let txn_id = conv_option!(Regex::new(r"txnId\s*=\s*'([^']+)'")?.find(script_content))?.as_str();

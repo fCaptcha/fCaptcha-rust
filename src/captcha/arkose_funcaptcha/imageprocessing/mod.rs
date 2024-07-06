@@ -1,6 +1,6 @@
 use std::env::var;
 use image::{DynamicImage, GenericImage, GenericImageView, Rgba};
-use crate::commons::error::DortCapResult;
+use crate::commons::error::FCaptchaResult;
 
 fn in_range(input: u8, min: u8, max: u8) -> bool {
     input > min && input < max
@@ -9,7 +9,7 @@ fn in_range(input: u8, min: u8, max: u8) -> bool {
 pub fn process_dynamic_image(
     dynamic_img: DynamicImage,
     variant: &str,
-) -> DortCapResult<DynamicImage> {
+) -> FCaptchaResult<DynamicImage> {
     let mut new_img = DynamicImage::new_rgba8(dynamic_img.width(), dynamic_img.height());
     let mut nx = 0;
     let mut ny = 0;

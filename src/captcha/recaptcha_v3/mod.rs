@@ -16,7 +16,7 @@ use reqwest::{
 };
 use crate::{
     commons::error::DortCapError::CodeErr,
-    commons::error::DortCapResult,
+    commons::error::FCaptchaResult,
     PROXIES,
     tools::generators::outlook::extract_value
 };
@@ -33,7 +33,7 @@ pub struct ReCaptchaV3<'a> {
 
 impl<'a> ReCaptchaV3<'a> {
 
-    pub async fn new(site_key: &'a str, site_url: &'a str) -> DortCapResult<ReCaptchaV3<'a>> {
+    pub async fn new(site_key: &'a str, site_url: &'a str) -> FCaptchaResult<ReCaptchaV3<'a>> {
         let mut client;
         loop {
             let proxies = PROXIES.read().await;
@@ -63,7 +63,7 @@ impl<'a> ReCaptchaV3<'a> {
         })
     }
 
-    pub async fn request_anchor(&self) -> DortCapResult<String> {
+    pub async fn request_anchor(&self) -> FCaptchaResult<String> {
         let mut params: IndexMap<&str, &str> = IndexMap::new();
         let url = &*format!("{}.", BASE64_URL_SAFE_NO_PAD.encode(self.site_url));
         params.insert("ar", "1");

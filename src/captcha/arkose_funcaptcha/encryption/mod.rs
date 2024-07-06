@@ -11,7 +11,7 @@ use hex::ToHex;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use crate::commons::error::DortCapError::DetailedInternalErr;
-use crate::commons::error::DortCapResult;
+use crate::commons::error::FCaptchaResult;
 
 pub mod murmur;
 
@@ -34,7 +34,7 @@ impl Display for EncryptedData {
     }
 }
 
-pub fn encrypt(data: &str, key: &str) -> DortCapResult<EncryptedData> {
+pub fn encrypt(data: &str, key: &str) -> FCaptchaResult<EncryptedData> {
     let data = data.to_owned();
     let mut salt = vec![];
     let mut rng = rand::thread_rng();
@@ -92,7 +92,7 @@ pub fn encrypt(data: &str, key: &str) -> DortCapResult<EncryptedData> {
     })
 }
 
-pub fn cryptojs_decrypt(data: &str, key: &str) -> DortCapResult<Vec<u8>> {
+pub fn cryptojs_decrypt(data: &str, key: &str) -> FCaptchaResult<Vec<u8>> {
     let encrypted_data: EncryptedData = serde_json::from_str(data)?;
     let ct = BASE64_STANDARD.decode(&encrypted_data.ct)?;
     let iv = hex::decode(&encrypted_data.iv)?;

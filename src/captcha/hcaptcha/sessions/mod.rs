@@ -6,7 +6,7 @@ use rocket::serde::{Deserialize, Serialize};
 use serde_json::Value;
 use DortCapError::DetailedInternalErr;
 use crate::commons::error::DortCapError::CodeErr;
-use crate::commons::error::{DortCapError, DortCapResult};
+use crate::commons::error::{DortCapError, FCaptchaResult};
 use crate::{conv_option, PROXIES};
 
 pub struct HCaptchaSession {
@@ -18,7 +18,7 @@ pub struct HCaptchaSession {
 
 impl HCaptchaSession {
 
-    pub async fn new(site_key: &str, site_url: &str, rq_data: Option<&str>) -> DortCapResult<HCaptchaSession> {
+    pub async fn new(site_key: &str, site_url: &str, rq_data: Option<&str>) -> FCaptchaResult<HCaptchaSession> {
         let proxies = PROXIES.read().await;
         let proxy = conv_option!(fastrand::choice(&*proxies))?;
         let client = ClientBuilder::new()

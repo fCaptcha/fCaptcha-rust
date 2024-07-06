@@ -1,7 +1,7 @@
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD_NO_PAD;
 use rocket::serde::{Deserialize, Serialize};
-use crate::commons::error::DortCapResult;
+use crate::commons::error::FCaptchaResult;
 use crate::conv_option;
 
 #[derive(Serialize, Deserialize)]
@@ -20,7 +20,7 @@ pub struct DecodedJWT {
     pub full_type: String
 }
 
-pub fn parse_jwt(jwt: &str) -> DortCapResult<DecodedJWT> {
+pub fn parse_jwt(jwt: &str) -> FCaptchaResult<DecodedJWT> {
     let mut split = jwt.split(".");
     split.next();
     let extracted = conv_option!(split.next())?;

@@ -2,12 +2,12 @@ use reqwest::Client;
 use reqwest::header::HeaderMap;
 use serde_json::{Value, json};
 use crate::commons::error::DortCapError::CodeErr;
-use crate::commons::error::DortCapResult;
+use crate::commons::error::FCaptchaResult;
 
 pub mod jshelper;
 
 
-pub(crate) async fn get_answers(headers: HeaderMap, client: &Client, dapi_script: &str, game_type: i32, lw: &Vec<Value>, li: &str) -> DortCapResult<Vec<Value>> {
+pub(crate) async fn get_answers(headers: HeaderMap, client: &Client, dapi_script: &str, game_type: i32, lw: &Vec<Value>, li: &str) -> FCaptchaResult<Vec<Value>> {
     if game_type == 3 || dapi_script.eq("NOT_REQUIRED") {
         return Ok(Vec::new());
     }

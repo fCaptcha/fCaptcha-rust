@@ -21,17 +21,7 @@ scc = "2.1.0"
 ipgen = "1.0.2"
 sha1 = "0.11.0-pre.3"
 ndarray = "0.15.6"
-reqwest = { package = "reqwest", version = "0.11.27", features = [
-    "serde_json",
-    "cookie_store",
-    "cookies",
-    "socks",
-    "brotli",
-    "deflate",
-    "gzip",
-    "json",
-    "blocking"
-] }
+reqwest = { package = "reqwest", version = "0.11.27", features = ["serde_json", "cookie_store", "cookies", "socks", "brotli", "deflate", "gzip", "json", "blocking", "__tls"] }
 thiserror = "1.0.57"
 fmtools = {version = "0.1.2", features = ["obfstr"]}
 uuid = { version = "1.7.0", features = ["v4", "fast-rng"]}
@@ -73,3 +63,4 @@ twox-hash = "1.6.3"
 rust-hashcash = { version = "0.3.0", features = ["sha1"] }
 aes-gcm = "0.10.3"
 aes = { version = "0.8.4", features = ["hazmat"] }
+crc32fast = "1.4.2"

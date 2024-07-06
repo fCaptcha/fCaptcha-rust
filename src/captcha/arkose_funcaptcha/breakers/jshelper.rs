@@ -2,10 +2,10 @@ use std::str::FromStr;
 use serde_json::Value;
 use v8::OwnedIsolate;
 use crate::commons::error::DortCapError::CodeErr;
-use crate::commons::error::DortCapResult;
+use crate::commons::error::FCaptchaResult;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn breakers(dapi_code: &str, input: Value) -> DortCapResult<Value> {
+pub fn breakers(dapi_code: &str, input: Value) -> FCaptchaResult<Value> {
     let isolate: &mut OwnedIsolate = &mut v8::Isolate::new(Default::default());
     let scope = &mut v8::HandleScope::new(isolate);
     let context = v8::Context::new(scope);

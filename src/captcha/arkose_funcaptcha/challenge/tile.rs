@@ -2,10 +2,10 @@ use image::DynamicImage;
 use image_hasher::{HashAlg, HasherConfig, ImageHash};
 use image_hasher::HashAlg::DoubleGradient;
 
-use crate::commons::error::DortCapResult;
+use crate::commons::error::FCaptchaResult;
 use crate::DORTCAP_CONFIG;
 
-pub async fn hash_image(img: &DynamicImage) -> DortCapResult<(ImageHash, String)> {
+pub async fn hash_image(img: &DynamicImage) -> FCaptchaResult<(ImageHash, String)> {
     let size = DORTCAP_CONFIG.hashing.hash_size;
     let hasher_config = HasherConfig::new().hash_size(size, size).hash_alg(HashAlg::Median).preproc_dct();
     let h = hasher_config.to_hasher().hash_image(img);
@@ -21,7 +21,7 @@ pub struct Tile {
 }
 
 impl Tile {
-    pub async fn new(contents: &DynamicImage, instr: bool) -> DortCapResult<Self>  {
+    pub async fn new(contents: &DynamicImage, instr: bool) -> FCaptchaResult<Self>  {
         let raw = hash_image(contents).await?;
         let h = raw.0;
         let t = raw.1;

@@ -40,7 +40,7 @@ use crate::captcha::arkose_funcaptcha::encryption::murmur;
 use crate::captcha::recaptcha_v3::ReCaptchaV3;
 use crate::commons::console::{created_account, solved};
 use crate::commons::console::SolveType::{CUSTOMER, INTERNAL};
-use crate::commons::error::{DortCapError, DortCapResult};
+use crate::commons::error::{DortCapError, FCaptchaResult};
 use crate::commons::error::DortCapError::CodeErr;
 use crate::commons::RUNTIME;
 use crate::commons::utils::get_proxy_ipv6;
@@ -196,7 +196,7 @@ lazy_static! {
 }
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 64)]
-async fn main() -> DortCapResult<()> {
+async fn main() -> FCaptchaResult<()> {
     let platform = new_default_platform(5000, false).make_shared();
     V8::initialize_platform(platform);
     V8::initialize();

@@ -1,4 +1,4 @@
-use crate::DortCapResult;
+use crate::FCaptchaResult;
 use scc::HashMap;
 use std::str::FromStr;
 use std::time::Duration;
@@ -38,7 +38,7 @@ lazy_static! {
     static ref CAPBYPASS_KEY: &'static str = "CB-9483a6f6b48c45e7aeba59417acf8fbc";
 }
 
-async fn solve_cb(image_b64: &str, variant: &str) -> DortCapResult<u8> {
+async fn solve_cb(image_b64: &str, variant: &str) -> FCaptchaResult<u8> {
     let url = "https://capbypass.com/api/createTask";
     let payload = json!({
         "clientKey": &*CAPBYPASS_KEY,
@@ -70,13 +70,13 @@ async fn solve_cb(image_b64: &str, variant: &str) -> DortCapResult<u8> {
     Err(CodeErr(0x01, "SOLVE_FAILED"))
 }
 
-fn create_headers(headers: &HeaderMap) -> DortCapResult<HeaderMap> {
+fn create_headers(headers: &HeaderMap) -> FCaptchaResult<HeaderMap> {
     let headers = headers.clone();
     return Ok(headers);
 }
 
 
-pub async fn get_answer(xevil_node: &XEvilNode, difficulty: u8, variant: &str, raw_grid: &Vec<u8>) -> DortCapResult<u8> {
+pub async fn get_answer(xevil_node: &XEvilNode, difficulty: u8, variant: &str, raw_grid: &Vec<u8>) -> FCaptchaResult<u8> {
     let lock = xevil_node.queue_lock.write().await;
     while *xevil_node.current_queue_size.read().await > xevil_node.queue_size {}
     drop(lock);
@@ -136,7 +136,7 @@ impl TaskResult {
 
 
 impl Challenge {
-    pub async fn new(http_session: &Client, headers: &HeaderMap, difficulty: u8, game_type: u8, variant: &str, image_url: &str, decryption_key: &Option<String>) -> DortCapResult<Self> {
+    pub async fn new(http_session: &Client, headers: &HeaderMap, difficulty: u8, game_type: u8, variant: &str, image_url: &str, decryption_key: &Option<String>) -> FCaptchaResult<Self> {
         let raw_grid_bytes = http_session.get(image_url).headers(create_headers(headers)?).send().await?.bytes().await?;
         let mut raw_grid = raw_grid_bytes.to_vec();
         if decryption_key.is_some() {
@@ -166,7 +166,7 @@ impl Challenge {
         let mut indexes: Vec<u8> = (0..difficulty).collect();
         let mut idx = 0;
         if game_type == 3 {
-            let mut tasks: Vec<JoinHandle<DortCapResult<TaskResult>>> = Vec::new();
+            let mut tasks: Vec<JoinHandle<FCaptchaResult<TaskResult>>> = Vec::new();
             for tile in &tiles {
                 let hash = tile.hash.clone();
                 let key = format!("Game Type {}:Tile Hashes ({}x{}):{}:{}", game_type, tile.width, tile.height, variant, &*hash);
@@ -308,7 +308,7 @@ impl Challenge {
         })
     }
 
-    pub async fn save_tiles(&self) -> DortCapResult<()> {
+    pub async fn save_tiles(&self) -> FCaptchaResult<()> {
         let mut index = 0;
         for tile in &self.tiles {
             let mut database = IMAGE_DATABASE.get().await.to_owned();

@@ -24,7 +24,7 @@ fn fmt_err(err: &impl Error, formatter: &mut Formatter<'_>) -> FormatResult {
     Ok(())
 }
 
-pub type DortCapResult<T> = Result<T, DortCapError>;
+pub type FCaptchaResult<T> = Result<T, DortCapError>;
 
 #[derive(thiserror::Error)]
 pub enum DortCapError {

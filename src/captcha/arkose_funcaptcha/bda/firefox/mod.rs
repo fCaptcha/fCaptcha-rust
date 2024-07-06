@@ -19,7 +19,7 @@ use crate::{
         },
         encryption::encrypt,
     },
-    commons::error::DortCapResult,
+    commons::error::FCaptchaResult,
     FINGERPRINTS,
 };
 
@@ -29,6 +29,12 @@ pub struct BrowserHeaders {
     pub user_agent: String,
     #[serde(rename = "Accept-Language")]
     pub accept_language: String,
+    #[serde(rename = "Sec-Ch-Ua")]
+    pub sec_ch_ua: String,
+    #[serde(rename = "Sec-Ch-Ua-Platform")]
+    pub sec_ch_ua_platform: String,
+    #[serde(rename = "Sec-Ch-Ua-Mobile")]
+    pub sec_ch_ua_mobile: String
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -37,7 +43,7 @@ struct BDATemp {
     headers: BrowserHeaders
 }
 
-pub async fn get_encrypted_firefox_bda(version_url: &str, bda_template: &mut BDATemplate) -> DortCapResult<ArkoseFingerprint> {
+pub async fn get_encrypted_firefox_bda(version_url: &str, bda_template: &mut BDATemplate) -> FCaptchaResult<ArkoseFingerprint> {
     let time = BASE64_STANDARD.encode(UNIX_EPOCH.elapsed()?.as_secs().to_string());
     let mut fps = FINGERPRINTS.get().await.clone();
     let cmd: String = redis::cmd("RANDOMKEY").query_async(&mut fps).await?;

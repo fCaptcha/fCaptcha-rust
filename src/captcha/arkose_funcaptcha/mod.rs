@@ -31,7 +31,7 @@ use crate::{ARGUMENTS, DORTCAP_CONFIG, PROXIES, SOLVED};
 use crate::captcha::arkose_funcaptcha::bda::firefox::get_encrypted_firefox_bda;
 use crate::captcha::arkose_funcaptcha::headers::generate_headers_capi;
 use crate::commons::error::DortCapError::{CodeErr, DetailedInternalErr};
-use crate::commons::error::DortCapResult;
+use crate::commons::error::FCaptchaResult;
 use crate::commons::REDIS_RUNTIME;
 
 pub mod structs;
@@ -93,7 +93,7 @@ lazy_static!{
 impl ArkoseSession {
 
     // new arkose session
-    pub async fn new(mut request: FunCaptchaRequest) -> DortCapResult<Self> {
+    pub async fn new(mut request: FunCaptchaRequest) -> FCaptchaResult<Self> {
         let mut client: Client;
         let proxies = PROXIES.read().await;
         let proxy = request.proxy.as_deref().unwrap_or(fastrand::choice(&*proxies).ok_or(CodeErr(0x01, "PROXIES"))?);
@@ -124,7 +124,7 @@ impl ArkoseSession {
     }
 
     // retrieve arkose session token
-    async fn get_session_token(&self) -> DortCapResult<SessionResponse>  {
+    async fn get_session_token(&self) -> FCaptchaResult<SessionResponse>  {
         let r = self.client.get(format!("https://iframe.arkoselabs.com/{0}", self.request.site_key)).send().await?;
         let rnd = f64::to_string(&round(fastrand::f64(), 16));
         let mut data = IndexMap::new();
@@ -168,7 +168,7 @@ impl ArkoseSession {
     }
 
     // retrieve funcaptcha challenge
-    async fn get_challenge(&self, spoof: bool, session_token_full: &str, session_token: &str, region: &str) -> DortCapResult<Game> {
+    async fn get_challenge(&self, spoof: bool, session_token_full: &str, session_token: &str, region: &str) -> FCaptchaResult<Game> {
         let arkose_url = &*self.request.arkose_api_url;
         let mut new_headers = self.headers.clone();
         // new_headers.insert("X-Requested-Id", encrypt("{\"return_security_info\":1,\"nojs_fb_type\":11}", &*format!("REQUESTED{session_token}ID"))?.to_string().parse()?);
@@ -194,7 +194,7 @@ impl ArkoseSession {
     }
 
     // submit challenge answers
-    async fn submit_answer(&self, dapi_script: &str, answers: &Vec<Value>, game_type: i32, session_token: &str, game_token: &str, region: &str) -> DortCapResult<AnswerResponse> {
+    async fn submit_answer(&self, dapi_script: &str, answers: &Vec<Value>, game_type: i32, session_token: &str, game_token: &str, region: &str) -> FCaptchaResult<AnswerResponse> {
         let mut headers = self.headers.clone();
         headers.insert("Referer", HeaderValue::try_from("https://client-api.arkoselabs.com/fc/assets/ec-game-core/game-core/1.20.0/standard/index.html")?);
         headers.insert("X-Requested-With", HeaderValue::try_from("XMLHttpRequest")?);
@@ -218,7 +218,7 @@ impl ArkoseSession {
     }
 
     // retrieve encryption / decryption key from arkose
-    async fn fetch_encryption_key(&self, session_token: &str, game_token: &str, region: &str) -> DortCapResult<EncryptionKeyResponse> {
+    async fn fetch_encryption_key(&self, session_token: &str, game_token: &str, region: &str) -> FCaptchaResult<EncryptionKeyResponse> {
         let mut data = HashMap::new();
         data.insert("session_token", session_token);
         data.insert("game_token", game_token);
@@ -227,18 +227,18 @@ impl ArkoseSession {
         Ok(from_str(&ekey_token_response)?)
     }
 
-    async fn parse_region_from_token(&self, token: &str) -> DortCapResult<String> {
+    async fn parse_region_from_token(&self, token: &str) -> FCaptchaResult<String> {
         let strs: Vec<&str> = token.split("|r=").collect();
         Ok(strs[1].split("|").next().ok_or(DetailedInternalErr("TOKEN_PARSE"))?.to_string())
     }
 
-    async fn split_token(&self, token: &str) -> DortCapResult<String> {
+    async fn split_token(&self, token: &str) -> FCaptchaResult<String> {
         let strs: Vec<&str> = token.split("|").collect();
         Ok(strs[0].to_string())
     }
 
 
-    pub async fn solve(&self) -> DortCapResult<SolvedCaptchaResponse> {
+    pub async fn solve(&self) -> FCaptchaResult<SolvedCaptchaResponse> {
         let session = self.get_session_token().await?;
         if session.error.is_some() {
             return Err(DetailedInternalErr("SESSION_TOKEN"));
